@@ -19,7 +19,6 @@
 
 import argparse
 import json
-import math
 import sys
 
 LEVEL_MAP = {"低": 1, "中": 2, "高": 3, "low": 1, "medium": 2, "high": 3}
@@ -120,7 +119,7 @@ def calculate_emv(risks_results):
     total_emv = 0
     for r in risks_results:
         fi = r.get("financial_impact", 0)
-        p_numeric = r.get("probability_numeric", 2)
+        p_numeric = r.get("probability", 2)
         # 概率数值映射为百分比：1→20%, 2→50%, 3→80%
         prob_pct = {1: 0.2, 2: 0.5, 3: 0.8}.get(p_numeric, 0.5)
         emv = prob_pct * fi

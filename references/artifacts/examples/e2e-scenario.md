@@ -211,7 +211,7 @@ POST /api/login
 开发员读取 `src/routes/auth.ts` 和 `src/models/user.ts`，实现登录逻辑。
 
 产出 SUMMARY-T01.md：
-```markdown
+````markdown
 ## 开发摘要：T01-后端登录API
 
 ### 改动文件
@@ -221,14 +221,13 @@ POST /api/login
 | src/utils/jwt.ts | 新增 JWT 签发工具函数 |
 
 ### verify 输出
-```
-$ curl -X POST ... | jq .code
-401
-```
+
+    $ curl -X POST ... | jq .code
+    401
 
 ### 交叉评审
 评审通过，无幻觉，无越界改动。
-```
+````
 
 ### 执行 T02（与 T01 并行）
 
