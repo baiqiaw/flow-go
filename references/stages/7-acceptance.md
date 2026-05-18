@@ -6,7 +6,7 @@
 
 **步骤**：
 1. UAT：对照 REQUIREMENT.md 每条 AC 逐项验证
-2. 健康评分：从工件汇总指标，运行 `python3 references/scripts/health_scorer.py`，产出 6 维评分（AC 通过率/测试覆盖/评审效率/代码质量/边界卫生/文档完备），评分写入 UAT.md。脚本自动追加到 `health-history.jsonl` 供趋势分析
+2. 健康评分：从工件汇总指标，运行 `python3 references/scripts/health_scorer.py`，产出 7 维评分（AC 通过率/测试覆盖/评审效率/代码质量/边界卫生/文档完备/资源效率），评分写入 UAT.md。脚本自动追加到 `health-history.jsonl` 供趋势分析
 3. 验收签字：产品经理 + 项目经理分别签字
 4. LESSONS 提名：扫 SUMMARY 和 PROGRESS，把符合提名条件的失败经验入库（同时更新 `.lessons.jsonl` 索引）
 5. **进化反思**：
