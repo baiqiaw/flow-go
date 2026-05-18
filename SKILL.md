@@ -1,0 +1,251 @@
+---
+name: flow-go
+description: >
+  6 角色 8 阶段 AI 开发流程编排。输入 go 即可自动路由到下一步。
+  角色包括：产品经理、项目经理、技术经理、开发员、测试员、运维。
+  阶段流程：需求→设计→任务→开发→测试→审查→部署→验收。
+  MUST trigger when the user says: "go", "/go", "继续", "下一步", "next",
+  "新需求", "设计", "拆任务", "开发", "测试", "审查", "部署", "验收",
+  "归档", "archive", "收工", "这个做完了",
+  "废弃", "放弃", "abandon", "cancel",
+  "清理归档", "归档维护",
+  "热修", "hotfix", "紧急修复",
+  "回溯", "recall", "接着上次", "resume",
+  "保存", "save", "整理", "neat", "同步", "sync up", "tidy up docs", "update memory",
+  "clean up docs", "/sync", "/neat", "同步一下", "整理文档", "整理一下",
+  "更新记忆", "梳理一下", "收尾",
+  "进化分析", "反思一下", "检查进化", "进化信号", "进化状态", "归因",
+  或任何描述新功能/新需求的短语（且当前无活跃 change）。
+  Cross-platform: works on Claude Code, OpenAI Codex, OpenCode, and OpenClaw.
+---
+
+# Flow-Go — 6 角色 × 8 阶段流程编排
+
+> **使用方式**：输入 `go` 或任何阶段关键词，AI 自动路由到正确的阶段和角色。
+
+## 流程全景
+
+```
+[0-需求] → [1-设计] → [2-任务] → [3-开发] → [4-测试] → [5-审查] → [6-部署] → [7-验收]
+  产品经理     技术经理    项目经理     开发员     测试员     技术经理     运维     产品经理+项目经理
+```
+
+特殊流程：`归档`（任意阶段完成）/ `废弃`（放弃）/ `热修`（紧急）/ `回溯`（恢复）/ `整理`（内建知识库同步）/ `归档维护`（清理）
+
+---
+
+## 第一步 · 读状态
+
+1. 尝试读项目根目录 `STATE.md`。不存在 → 新项目，跳过
+2. 存在时执行完整性校验：grep `references/artifacts/meta-artifacts.md` 的「完整性校验」清单。校验不通过 → 输出具体问题，降级为"无状态"模式（等同新项目）
+3. 校验通过后关注：`活跃 Change` / `当前阶段` / `当前任务` / `中断任务`
+4. `中断任务` 非空 → 优先级最高，走回溯流程
+5. 尝试读 `.specs/CONTEXT.md`。不存在 → 棕地项目提醒可跑 intel-scan，不强制
+
+## 第二步 · 加载配置（可选）
+
+读取用户偏好配置（按优先级）：
+1. 项目级 `.flowgo-config`（项目根目录）
+2. 用户级 `~/.flowgo-config`（HOME 目录）
+3. 内置默认值
+
+**支持的配置项**：
+| 配置项 | 默认值 | 说明 |
+|--------|--------|------|
+| `test_rounds` | 3 | 4-测试阶段单轮修复上限 |
+| `max_files_per_task` | 10 | 3-开发阶段单任务改动文件上限 |
+| `auto_sync` | true | 决策信号自动触发知识库受作用域同步 |
+| `priority_framework` | MoSCoW | 2-任务阶段默认优先级框架 |
+| `explain_level` | default | 解释详细度（default / terse） |
+| `evolution_mode` | auto | 进化分析模式（auto=自动触发 / off=关闭） |
+| `complexity_threshold` | 5 | blast-radius 文件数阈值 |
+| `bitter_pill_auto` | true | 归档后自动触发苦丸审计 |
+
+**配置格式**（YAML，每行一个键值对）：
+```yaml
+test_rounds: 3
+max_files_per_task: 10
+auto_sync: true
+priority_framework: MoSCoW
+explain_level: default
+```
+
+## 第三步 · 意图路由
+
+按以下表格匹配用户输入（**取最先命中**）：
+
+| 用户输入特征 | 路由到 | 角色 |
+|---|---|---|
+| `继续` / `接着上次` / `resume` | 回溯流程 | 自动 |
+| `执行 T<NN>` / `跑 T<NN>` | 3-开发（指定任务） | 开发员 |
+| `审查` / `review` / `代码审查` | 5-审查 | 技术经理 |
+| `测试` / `写测试` / `QA` | 4-测试 | 测试员 |
+| `部署` / `上线` / `发布` / `deploy` | 6-部署 | 运维 |
+| `验收` / `UAT` / `交付` | 7-验收 | 产品经理+项目经理 |
+| `拆任务` / `排期` / `规划` | 2-任务 | 项目经理 |
+| `设计` / `架构` | 1-设计 | 技术经理 |
+| `需求` / `requirement` | 0-需求 | 产品经理 |
+| `归档` / `archive` / `收工` / `这个做完了` | 归档流程 | 当前阶段角色 |
+| `废弃` / `放弃` / `abandon` / `cancel` | 废弃流程 | 项目经理 |
+| `清理归档` / `归档维护` / `archive cleanup` | 归档维护流程 | 运维 |
+| `热修` / `hotfix` / `紧急修复` | 热修流程 | 开发员→技术经理 |
+| `回溯` / `recall` | 回溯流程 | 自动 |
+| `整理` / `neat` / `同步` | 加载 `references/sync-workflow.md` 执行全量同步 | — |
+| `保存` / `save` | 写 PROGRESS.md + 更新 STATE.md | 当前角色 |
+| `进化分析` / `反思一下` / `检查进化` / `进化信号` / `归因` | 运行 evolution_signal + evolution_reflect，展示假设和归因摘要 | 自动 |
+| `进化状态` | 显示进化触发条件状态（健康趋势 / 归因频率 / 历史数据量） | 自动 |
+| `go` / `下一步` / `next` | STATE 有活跃变更 → 当前阶段下一步；无 → 0-需求 | 自动 |
+| `/lite` | 强制设置当前 change 复杂度为 LITE，跳转到当前阶段 | 开发员 |
+| `/heavy` | 强制设置当前 change 复杂度为 HEAVY，跳转到当前阶段 | 开发员 |
+| 任何新事物描述（当前无活跃 change） | 0-需求（自动生成 change-id） | 产品经理 |
+| 模糊不清 | 反问：「新需求 / 继续上次 / 审查测试 / 别的？」 | — |
+
+### 路由决策可视化
+
+> 完整路由流程图见 `references/routing-diagram.md`（按需加载）。
+
+## 第三步半 · 复杂度分级
+
+路由确定后、闸门检查前，自动判定当前 change 的复杂度级别：
+
+1. 调用 `python3 references/scripts/complexity_classifier.py --description "<用户描述>" --project-dir <项目根> --specs-dir .specs/<change-id>`
+2. 用户可通过 `/lite` 或 `/heavy` 快捷指令覆盖自动判定
+3. 分级结果在角色声明中展示（第五步）
+4. 复杂度影响闸门检查的严格程度（LITE 简化闸门，HEAVY 加强审查）
+
+## 第四步 · 闸门检查
+
+<HARD-GATE>
+进入阶段前**必须**验证前置条件。不满足则停下来，引导用户补齐。
+每个 change 都走完整闸门流程——无论是单行 bugfix 还是大型 feature。"简单"变更恰恰是未审查假设导致返工最多的地方。不允许用"这个太简单不需要走 X 阶段"跳步。
+
+常见合理化陷阱（全部驳回）：
+- "就改个按钮颜色，不需要设计" → 颜色变更可能影响设计系统一致性
+- "bugfix 不需要需求文档" → 没有 AC 就没有回归测试依据
+- "单文件改动直接开发" → 不理解上下文的修改是 new bug 的温床
+- "热修可以跳过审查" → 热修审查是防止生产事故的最后一道防线
+</HARD-GATE>
+
+| 进入阶段 | 必须存在（STANDARD/HEAVY） | LITE 简化闸门 | 缺失时 |
+|---|---|---|---|
+| 0-需求 | 无 | 同 STANDARD | 直接进 |
+| 1-设计 | CHANGE.md + REQUIREMENT.md + `<change-id>-REVIEW.md`（需求评审 PASS） | LITE 跳过此阶段 | 提示先跑 0-需求 |
+| 2-任务 | REQUIREMENT.md + DESIGN.md + `<change-id>-REVIEW.md`（设计评审 PASS） | LITE 跳过此阶段 | 提示先跑 1-设计 |
+| 3-开发 | DESIGN.md + TASK.md（含 verify）+ `<change-id>-REVIEW.md`（任务评审 PASS）；指定任务时验证该任务存在且 depends_on 已完成 | CHANGE.md（含内联 AC） | 提示先跑 2-任务 |
+| 4-测试 | 代码已提交 + SUMMARY.md（含交叉评审 PASS） | 代码已提交 | 提示先跑 3-开发 |
+| 5-审查 | TEST.md + 全部 SUMMARY | LITE 跳过此阶段 | 提示先跑 4-测试 |
+| 6-部署 | REVIEW.md（严重项经循环评审确认 = 0） | LITE 跳过此阶段 | 提示先跑 5-审查 |
+| 7-验收 | DEPLOY.md + 全部工件 | 4-测试通过 + CHANGE.md AC 全部满足 | 提示先跑 6-部署 |
+
+### 闸门后续 · Handoff 检查（仅阶段转换时执行）
+
+Handoff 检查在**首次阶段转换**时执行，验证上游上下文是否已传递。跨会话恢复时跳过——工件仍在即说明上下文已传递，重复验证无增量价值，只浪费 token。
+
+**判断依据**：本次进入阶段是否由「上一阶段完成」触发？
+- **是**（阶段转换）：闸门检查 → Handoff 检查 → 角色声明 → 阶段步骤
+- **否**（会话恢复 / 回溯 / 热修）：闸门检查 → 角色声明 → 阶段步骤
+
+阶段转换时，grep `references/handoff-protocols.md` 中对应阶段的「TO 确认」项，逐条验证。任一不满足 → 停下，回溯上游角色补齐。
+
+## 第五步 · 角色声明
+
+路由确定后，输出角色声明：
+
+```
+✅ 路由：<阶段名>
+✅ Change-ID：<id>
+✅ 复杂度：<LITE / STANDARD / HEAVY>
+✅ 当前角色：<角色名>
+✅ 角色红线：<一句话提醒该角色的禁止事项>
+✅ 第一动作：<具体下一步>
+```
+
+## 角色红线速查
+
+| 角色 | 禁止 |
+|---|---|
+| 产品经理 | 写实现代码、改技术设计 |
+| 技术经理 | 设计阶段写实现代码；审查阶段自己改代码 |
+| 项目经理 | 改需求内容、改技术设计 |
+| 开发员 | 改 REQUIREMENT/DESIGN、跨任务改动 |
+| 测试员 | 自己修代码、删除/弱化失败用例 |
+| 运维 | 改业务代码、未经审查直接部署 |
+
+## 第六步 · 加载执行
+
+按阶段名加载 `references/stages/<N>-<name>.md` 对应文件，按其步骤执行。
+需要工件模板时加载 `references/artifacts/<category>.md` 对应文件。
+
+**加载映射**：
+| 路由目标 | 加载文件 | 工件模板文件 |
+|---------|---------|-------------|
+| 0-需求 | `stages/0-requirement.md` | `artifacts/spec-artifacts.md`（CHANGE/REQUIREMENT） |
+| 1-设计 | `stages/1-design.md` | `artifacts/spec-artifacts.md`（DESIGN） |
+| 2-任务 | `stages/2-task.md` | `artifacts/task-artifacts.md`（TASK） |
+| 3-开发 | `stages/3-develop.md` | `artifacts/task-artifacts.md`（SUMMARY/PROGRESS） |
+| 4-测试 | `stages/4-test.md` | `artifacts/quality-artifacts.md`（TEST） |
+| 5-审查 | `stages/5-review.md` | `artifacts/quality-artifacts.md`（REVIEW） |
+| 6-部署 | `stages/6-deploy.md` | `artifacts/deploy-artifacts.md`（DEPLOY） |
+| 7-验收 | `stages/7-acceptance.md` | `artifacts/deploy-artifacts.md`（UAT） |
+| 热修/归档/废弃/回溯/归档维护 | `stages/special-flows.md`（grep 对应流程） | 按需（归档→`meta-artifacts.md`，废弃→`deploy-artifacts.md`） |
+
+**Token 预算**：按阶段按需加载 reference 文件（禁止整读）。每个阶段仅加载 `stages/<N>-<name>.md` + 对应 `artifacts/<category>.md`，需额外参考时才 grep 其他文件。评审子代理调用不计入主代理 token 预算。
+
+### Skill 链式调用白名单
+
+<EXTREMELY-IMPORTANT>
+flow-go 流程中**只允许调用以下 skill**。未列出的 skill 一律禁止调用，即使用户的请求看起来相关。
+
+| 流程位置 | 允许调用的 skill | 说明 |
+|---------|-----------------|------|
+| 3-开发（遇到 bug/异常） | `superpowers:systematic-debugging` | 仅在遇到真实 bug 时，不用于需求澄清 |
+
+**内建同步能力**：7-验收完成后、归档/废弃完成后、决策信号触发时，flow-go 自动执行知识库同步（全量或受作用域），无需调用外部 skill。同步工作流详见 `references/sync-workflow.md`，路径速查见 `references/agent-paths.md`，变更映射见 `references/sync-matrix.md`。
+
+**禁止调用**：`frontend-design`、`mcp-builder`、`superpowers:brainstorming`、`superpowers:writing-plans`、`superpowers:test-driven-development` 及其他未列出的 skill。这些 skill 与 flow-go 的角色红线冲突（角色分工已内置，不需要外部 skill 介入）。
+</EXTREMELY-IMPORTANT>
+
+### MCP 扩展点（可选）
+
+flow-go 默认以文件驱动（STATE.md / .specs/），不依赖外部 MCP。以下 MCP 集成为可选增强，需要用户配置后才能使用。
+
+| MCP Server | 适用阶段 | 用途 | 回退方案 |
+|-----------|---------|------|---------|
+| GitHub MCP | 3-开发 / 5-审查 / 6-部署 | 自动创建 issue 关联 change、PR 创建与链接、CI 状态检查 | 手动 git 操作 + 文件记录 |
+| Jira MCP | 0-需求 / 2-任务 / 7-验收 | 需求同步到 Jira issue、任务与 sprint 关联、验收状态更新 | 纯文件工件（REQUIREMENT/TASK/UAT） |
+| Slack MCP | 7-验收后 | 验收结果通知团队频道 | 手动复制 UAT 摘要 |
+
+**使用原则**：
+- MCP 数据为辅、文件为主。STATE.md 始终是唯一状态源
+- MCP 不可用时自动回退到文件方案，不阻塞流程
+- MCP 操作需在阶段步骤中显式声明（如「可选：如已配置 GitHub MCP，创建 issue 关联 change」）
+
+## 第七步 · 状态更新
+
+阶段完成（或产出工件）后，更新项目根 `STATE.md`：
+
+- 产出工件时：更新 `当前阶段` + `当前任务`
+- 全部完成归档后：清空 `活跃 Change` / `当前阶段` / `当前任务`
+- **归档/废弃流程**：STATE.md 清空已在流程自身步骤中完成，此处不再重复
+- 中断时：写 PROGRESS.md + 更新 `中断任务` 字段
+- **决策同步检查**：grep 本阶段「决策信号」，逐条检查产出工件是否匹配
+  - 有匹配 → 输出「🔄 决策同步：N 条新决策，执行受作用域同步」然后加载 `references/sync-workflow.md` 执行受作用域同步
+  - 无匹配 → 跳过
+  - 7-验收阶段：固定加载 `references/sync-workflow.md` 执行全量同步（验收 = 交接里程碑）
+- **自动进化触发**（配置项 `evolution_mode` 控制，默认 `auto`，设为 `off` 则跳过全部进化分析）：归档完成后按健康评分走双路径
+  - **CAPTURE 路径**（成功经验）：读 `health-history.jsonl` 最近一条，评分 ≥ 8.0 → 执行 `evolution_reflect.py --mode capture --specs-dir .specs/<id> --health-score <分>` → 成功策略存入 `.specs/evolution/strategies.jsonl` → 输出「🏆 策略已捕获：{approach}（评分 {score}）」
+  - **FIX 路径**（失败改进）：以下条件满足任一即触发
+    1. 连续 3 个 Change 健康评分下降（读 `health-history.jsonl` 最近 3 条）
+    2. 同一归因标签在最近 5 个 Change 中出现 ≥3 次（读 `.specs/evolution/` 下的信号历史）
+  - FIX 触发时 → 输出「🧬 进化信号已触发：{原因}，正在运行进化分析」→ 执行 `evolution_signal.py` → `evolution_reflect.py --mode reflect` → 展示假设和归因摘要
+  - 有顿悟时 → 额外输出「💡 顿悟：{root_cause}（已出现 N 次）→ 建议：{advice}」，请用户确认是否写入 LESSONS.md
+  - **BITTER PILL 路径**（规则自审计）：归档后自动执行 `python3 references/scripts/bitter_pill_audit.py --skill-dir <flow-go skill 目录> --output .specs/<id>/BITTER-PILL.md` → 产出 KEEP/REVIEW/CANDIDATE 审计报告 → CANDIDATE 项需用户逐条确认 → 输出「💊 苦丸审计完成：KEEP N / REVIEW N / CANDIDATE N」
+
+## 自检（产出路由声明前）
+
+- [ ] 已读 STATE.md（如果存在）
+- [ ] 已按路由表匹配意图
+- [ ] 新 CHANGE 已自动生成 change-id（如适用）
+- [ ] 闸门前置条件已验证
+- [ ] 角色声明包含红线提醒
+- [ ] 决策同步检查已执行（有信号已触发 / 无信号已跳过）

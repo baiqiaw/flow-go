@@ -1,0 +1,78 @@
+{
+  "skill_name": "flow-go",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "我想给我们的内部管理系统加一个文件上传功能，支持拖拽上传，单个文件最大 50MB，上传后可以在列表里预览和删除。现在用的是 Next.js 前端 + Express 后端，文件存在本地磁盘。大概这周内要搞定。",
+      "expected_output": "应该路由到 0-需求阶段，产品经理角色。生成 change-id（如 file-upload），反问澄清细节（why/who/what/when），然后产出 CHANGE.md + REQUIREMENT.md + 交叉评审报告。",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "go",
+      "expected_output": "应该读取 STATE.md。如果存在活跃 Change，路由到当前阶段的下一步；如果不存在，路由到 0-需求阶段并提示用户描述需求。需要正确执行读状态→加载配置→意图路由→闸门检查→角色声明的完整流程。",
+      "files": [
+        {
+          "path": "STATE.md",
+          "content": "# STATE\n\n活跃 Change: user-auth\n当前阶段: 3-开发\n当前任务: T02\n中断任务: \n\n最后更新: 2026-05-14"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "归档",
+      "expected_output": "应该路由到归档流程。检查 STATE.md 的活跃 Change，盘点 .specs/<id>/ 下已有工件，询问归档原因，写 ARCHIVE.md，清理 PROGRESS.md，移动到 archive/，更新 ARCHIVE-INDEX.md，清空 STATE.md。完成后触发 neat-freak 全量同步。",
+      "files": [
+        {
+          "path": "STATE.md",
+          "content": "# STATE\n\n活跃 Change: user-auth\n当前阶段: 5-审查\n当前任务: \n中断任务: \n\n最后更新: 2026-05-14"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "我需要把这个按钮的颜色改成红色",
+      "expected_output": "应该路由到 0-需求阶段（当前无活跃 change 时）。产品经理不应跳过澄清门控——即使看起来简单，也必须完成 4 维评估。可能建议最短路径（0→3→4→7），但不跳过需求阶段本身。",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "go",
+      "expected_output": "STATE.md 格式异常（缺少必填字段），应该执行完整性校验并输出具体问题。降级为无状态模式（等同新项目），提示用户描述需求或修复 STATE.md。",
+      "files": [
+        {
+          "path": "STATE.md",
+          "content": "# STATE\n\n活跃 Change: user-auth\n当前阶段: 3-开发"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "继续上次",
+      "expected_output": "应该路由到回溯流程。读取 STATE.md（中断任务非空优先），读取最近 3 个 SUMMARY.md，检查搁置时长，输出 5 分钟项目摘要 + 推荐下一步。",
+      "files": [
+        {
+          "path": "STATE.md",
+          "content": "# STATE.md — flow-go 状态文件\n\n## 活跃 Change\n- user-auth\n\n## 当前阶段\n- 3-开发\n\n## 当前任务\n- T03\n\n## 中断任务\n- T02\n\n## 阶段进度\n- 无\n\n## 更新时间\n- 2026-05-10"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "废弃这个需求",
+      "expected_output": "应该路由到废弃流程（项目经理角色）。确认废弃目标，评估影响（已到阶段 + 代码状态 + 依赖），写 ABANDONED.md，移动到 archive/abandoned/，更新索引，清空 STATE.md。",
+      "files": [
+        {
+          "path": "STATE.md",
+          "content": "# STATE.md — flow-go 状态文件\n\n## 活跃 Change\n- legacy-api\n\n## 当前阶段\n- 1-设计\n\n## 当前任务\n- 无\n\n## 中断任务\n- 无\n\n## 阶段进度\n- 步骤 3: 技术栈选型进行中\n\n## 更新时间\n- 2026-05-15"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "热修",
+      "expected_output": "应该路由到热修流程（开发员→技术经理）。要求用户提供 bug 描述/报告，判定 P 等级（P0/P1/P2），执行根因分析（Iron Law），修复后测试+审查，事后补齐 CHANGE.md + TEST.md + LESSONS。进化反思自动触发。",
+      "files": []
+    }
+  ]
+}
