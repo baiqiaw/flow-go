@@ -33,15 +33,16 @@ flow-go 的参考文档。SKILL.md 路由后按阶段名/工件名加载对应�
 |------|---------|------|
 | `requirement-example.md` | REQUIREMENT.md 好工件标准 | ~60 |
 | `task-example.md` | TASK.md 好工件标准 | ~70 |
+| `e2e-scenario.md` | 端到端场景演练（8 阶段完整流程 + 异常场景） | ~220 |
 | `summary-example.md` | SUMMARY.md 好工件标准 | ~90 |
 
 ## 根级文件
 
 - `handoff-protocols.md` — 阶段交接协议（7 组 FROM/TO 上下文转移清单，~100 行）
 - `anti-patterns.md` — 阶段反面模式（8 阶段各 4-5 条 Anti-Pattern 表，~130 行）
-- `health-dimensions.md` — 健康评分维度说明（6 维权重 + RAG 判定 + 趋势规则，~50 行）
+- `health-dimensions.md` — 健康评分维度说明（7 维权重 + RAG 判定 + 趋势规则，~50 行）
 - `decision-framework.md` — 角色协作决策树（6 角色 × 5 场景升级指引，~70 行）
-- `prioritization-quickref.md` — 优先级框架速查（MoSCoW / ICE / RICE）
+- `prioritization-quickref.md` — 优先级框架速查（MoSCoW / ICE / RICE / WSJF / MCDA + 自动推荐）
 - `routing-diagram.md` — 路由决策 DOT 流程图（按需加载，~80 行）
 - `cross-review-matrix.md` — 交叉评审规范（3 套 6 维矩阵定义 + 子代理 prompt 模板 + 失败处理策略）
 - `path-modes.md` — 路径模式定义（完整/增量/最短三种模式的闸门适配和工件差异）
@@ -53,8 +54,8 @@ flow-go 的参考文档。SKILL.md 路由后按阶段名/工件名加载对应�
 
 **依赖**：所有脚本仅使用 Python 标准库（argparse/json/os/re/sys/subprocess/datetime/pathlib/random/collections），无第三方依赖。Python >= 3.8。
 
-- `health_scorer.py` — 6 维健康评分 + 趋势追踪（health-history.jsonl）+ 趋势分析/自动分诊
-- `risk_analyzer.py` — 风险矩阵（概率×影响，1-9 分）
+- `health_scorer.py` — 7 维健康评分 + 趋势追踪（health-history.jsonl）+ 趋势分析/自动分诊
+- `risk_analyzer.py` — 风险矩阵（概率×影响，1-9 分）+ EMV 量化 + 三点估算 + 应对策略推荐
 - `task_estimator.py` — 蒙特卡洛工时预测（5000 次迭代，置信区间）
 - `lessons_indexer.py` — LESSONS 索引器（JSONL 生成 + 关键词搜索）
 - `evolution_signal.py` — 进化信号检测器（强/中信号 + 归因标签 + Cheap Gate）
@@ -63,3 +64,4 @@ flow-go 的参考文档。SKILL.md 路由后按阶段名/工件名加载对应�
 - `complexity_classifier.py` — 复杂度分级器（多信号加权评分，LITE/STANDARD/HEAVY）
 - `gate_check.py` — 闸门检查脚本（工件检查 + blast radius 双模式）
 - `bitter_pill_audit.py` — 苦丸审计脚本（规则文本扫描 + KEEP/REVIEW/CANDIDATE 分类）
+- `completion_forecaster.py` — 完成率预测器（基于历史数据线性趋势预测 + 置信区间 + 任务完成预测）

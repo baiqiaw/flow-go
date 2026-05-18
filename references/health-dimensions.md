@@ -1,6 +1,6 @@
 # 健康评分维度说明
 
-> health_scorer.py 的 6 维加权评分体系 + RAG 状态判定规则。
+> health_scorer.py 的 7 维加权评分体系 + RAG 状态判定规则。
 
 ---
 
@@ -8,12 +8,13 @@
 
 | 维度 | 权重 | 计算方式 | 数据来源 |
 |------|------|---------|---------|
-| AC 通过率 | 25% | passed / total × 100 | REQUIREMENT.md AC 数 vs TEST.md 覆盖 |
-| 测试覆盖 | 20% | completed / (completed + skipped) × 100 | 4-测试轮次完成/跳过数 |
-| 评审效率 | 15% | 1 轮 → 100，2 轮 → 80，3 轮 → 50，4+ → 30 | 交叉评审轮次 |
-| 代码质量 | 15% | 基础分 90（无幻觉）/ 50（有幻觉），按代码量递减 | code_lines + hallucination_flags |
-| 边界卫生 | 15% | 0 违规 → 100，1 → 70，≤ 3 → 40，4+ → 20 | boundary_violations |
+| AC 通过率 | 22% | passed / total × 100 | REQUIREMENT.md AC 数 vs TEST.md 覆盖 |
+| 测试覆盖 | 18% | completed / (completed + skipped) × 100 | 4-测试轮次完成/跳过数 |
+| 评审效率 | 13% | 1 轮 → 100，2 轮 → 80，3 轮 → 50，4+ → 30 | 交叉评审轮次 |
+| 代码质量 | 13% | 基础分 90（无幻觉）/ 50（有幻觉），按代码量递减 | code_lines + hallucination_flags |
+| 边界卫生 | 13% | 0 违规 → 100，1 → 70，≤ 3 → 40，4+ → 20 | boundary_violations |
 | 文档完备 | 10% | present / EXPECTED_ARTIFACTS × 100 | artifacts_complete 列表 |
+| 资源效率 | 11% | AC 通过数 / (代码行数 / 100)，比值越高分越高 | ac_passed + code_lines |
 
 ## RAG 状态
 

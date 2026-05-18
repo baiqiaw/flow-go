@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""项目健康评分器 — 从 flow-go 工件计算 6 维健康分数，追加趋势到 health-history.jsonl
+"""项目健康评分器 — 从 flow-go 工件计算 7 维健康分数，追加趋势到 health-history.jsonl
 
 用法：cat metrics.json | python3 health_scorer.py
      python3 health_scorer.py metrics.json [--format json]
@@ -17,27 +17,31 @@ from datetime import datetime, timezone
 DIMENSIONS = {
     "ac_coverage": {
         "label": "AC 通过率",
-        "weight": 0.25,
+        "weight": 0.22,
     },
     "test_completeness": {
         "label": "测试覆盖",
-        "weight": 0.20,
+        "weight": 0.18,
     },
     "review_efficiency": {
         "label": "评审效率",
-        "weight": 0.15,
+        "weight": 0.13,
     },
     "code_quality": {
         "label": "代码质量",
-        "weight": 0.15,
+        "weight": 0.13,
     },
     "boundary_hygiene": {
         "label": "边界卫生",
-        "weight": 0.15,
+        "weight": 0.13,
     },
     "doc_completeness": {
         "label": "文档完备",
         "weight": 0.10,
+    },
+    "token_efficiency": {
+        "label": "资源效率",
+        "weight": 0.11,
     },
 }
 
@@ -109,6 +113,32 @@ def score_doc_completeness(data):
     return round(present / len(EXPECTED_ARTIFACTS) * 100)
 
 
+def score_token_efficiency(data):
+    """资源效率评分：基于改动代码量与产出 AC 的比值
+
+    效率 = AC 通过数 / (代码行数 / 100)
+    高效 = 少代码多 AC 通过 = 高分
+    """
+    ac_passed = data.get("ac_passed", 0)
+    code_lines = data.get("code_lines_added", 0) + data.get("code_lines_removed", 0)
+
+    if ac_passed == 0:
+        return 50  # 无 AC 通过，基线分
+
+    if code_lines == 0:
+        return 100  # 无代码改动但 AC 通过（如配置/文档变更）
+
+    efficiency = ac_passed / (code_lines / 100)
+
+    if efficiency >= 1.0:
+        return 100  # 每 100 行代码 >= 1 个 AC
+    if efficiency >= 0.5:
+        return 80
+    if efficiency >= 0.2:
+        return 60
+    return 40  # 代码量大但 AC 覆盖少
+
+
 SCORERS = {
     "ac_coverage": score_ac_coverage,
     "test_completeness": score_test_completeness,
@@ -116,6 +146,7 @@ SCORERS = {
     "code_quality": score_code_quality,
     "boundary_hygiene": score_boundary_hygiene,
     "doc_completeness": score_doc_completeness,
+    "token_efficiency": score_token_efficiency,
 }
 
 
