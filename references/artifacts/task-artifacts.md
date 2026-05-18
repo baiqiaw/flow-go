@@ -14,6 +14,9 @@
 - [ ] 每个任务有 type 属性（feature/bugfix/refactor/doc）
 - [ ] depends_on 引用的任务 ID 均存在
 - [ ] 并行标记合理（无依赖的任务标为 parallel）
+- [ ] 预检环已通过（或残留问题已记录）
+- [ ] context_budget 与估算结果一致（若启用 context_budget_mode）
+- [ ] 并行分组已体现在依赖图描述中（若启用 context_budget_mode）
 
 ### SUMMARY.md 自检
 - [ ] 改动文件表已填写（非空）
@@ -31,6 +34,11 @@
 ## 依赖图
 <用文字描述任务依赖关系和并行标记>
 
+## 并行分组（预检环自动生成，context_budget_mode=off 时可省略）
+- 组 A [并行]：T01(small) + T03(small) — <策略说明>
+- 组 B：T02(large) — 独占执行
+- 串行：T04 → 依赖组 A + 组 B
+
 ## 任务列表
 
 <task id="T01" parallel="true" priority="must" type="feature">
@@ -41,6 +49,8 @@
   <verify>npm test -- module/NewFeature.test.ts</verify>
   <done>测试通过，功能符合 AC-1</done>
   <depends_on></depends_on>
+  <context_budget>small</context_budget>
+  <agent_hint>可与其他 small 任务并行执行</agent_hint>
 </task>
 
 <task id="T02" parallel="false" priority="should" type="bugfix">
@@ -51,6 +61,7 @@
   <verify>pytest tests/test_integration.py -v</verify>
   <done>集成测试通过</done>
   <depends_on>T01</depends_on>
+  <!-- context_budget 和 agent_hint 为可选字段，不填时由预检环自动估算 -->
 </task>
 
 <!--
@@ -62,6 +73,15 @@ type 取值（必填）：
   config   — 配置变更
   chore    — 杂项维护（依赖更新/清理/工具升级等）
 从 REQUIREMENT.md 描述推断：含"修复/fix/bug"→bugfix，"重构/refactor"→refactor，"文档/doc"→doc，"配置/config/环境"→config，"升级/清理/依赖"→chore，其余→feature
+
+context_budget 取值（可选，预检环自动填充）：
+  small  — 预估 < 2000 token（read_files ≤ 3 + action ≤ 50 字）
+  medium — 预估 2000-5000 token（read_files 4-6 或 action 50-100 字）
+  large  — 预估 > 5000 token（read_files > 6 或 action > 100 字）
+  不填时由 context_budget_estimator.py 自动估算
+
+agent_hint（可选，自由文本）：
+  指导 3-开发阶段的子代理调度策略，如「独占执行」「可打包并行」「需完整上下文」
 -->
 ```
 

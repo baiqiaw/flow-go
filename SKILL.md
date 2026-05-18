@@ -60,6 +60,8 @@ description: >
 | `evolution_mode` | auto | 进化分析模式（auto=自动触发 / off=关闭） |
 | `complexity_threshold` | 5 | blast-radius 文件数阈值 |
 | `bitter_pill_auto` | true | 归档后自动触发苦丸审计 |
+| `preflight_check` | true | 2-任务阶段启用预检环（反幻觉+粒度+上下文预算） |
+| `context_budget_mode` | auto | 上下文预算模式（auto=自动估算 / manual=手动填写 / off=关闭） |
 
 **配置格式**（YAML，每行一个键值对）：
 ```yaml
@@ -68,6 +70,8 @@ max_files_per_task: 10
 auto_sync: true
 priority_framework: MoSCoW
 explain_level: default
+preflight_check: true
+context_budget_mode: auto
 ```
 
 ## 第三步 · 意图路由
