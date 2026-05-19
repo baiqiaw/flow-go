@@ -62,6 +62,12 @@ description: >
 | `bitter_pill_auto` | true | 归档后自动触发苦丸审计 |
 | `preflight_check` | true | 2-任务阶段启用预检环（反幻觉+粒度+上下文预算） |
 | `context_budget_mode` | auto | 上下文预算模式（auto=自动估算 / manual=手动填写 / off=关闭） |
+| `flywheel_min_samples` | 3 | 飞轮分析最小轨迹样本数 |
+| `flywheel_gap_threshold` | 1.5 | Gap 分析偏差阈值（分） |
+| `flywheel_outcome_check` | true | 是否自动检测归档后 outcome |
+| `flywheel_outcome_days` | 7 | outcome 自动检测窗口（天） |
+| `context_summarize` | false | 是否默认启用上下文摘要（false=全文加载，true=摘要加载） |
+| `trace_auto_collect` | true | 归档时是否自动采集轨迹 |
 
 **配置格式**（YAML，每行一个键值对）：
 ```yaml
@@ -72,6 +78,12 @@ priority_framework: MoSCoW
 explain_level: default
 preflight_check: true
 context_budget_mode: auto
+flywheel_min_samples: 3
+flywheel_gap_threshold: 1.5
+flywheel_outcome_check: true
+flywheel_outcome_days: 7
+context_summarize: false
+trace_auto_collect: true
 ```
 
 ## 第三步 · 意图路由
