@@ -224,3 +224,125 @@
 - 上限 100 分
 
 **策略复用**：3-开发阶段 grep strategies.jsonl，按 task_type 匹配取 score 最高的 1-2 条参考
+
+---
+
+## TRACE.md（.specs/<id>/TRACE.md，归档时生成）
+
+轨迹记录，归档时由 trace_collector.py 自动生成。
+
+### 格式
+
+```markdown
+# TRACE — <change-id>
+
+## 阶段流转
+| 阶段 | 角色 | 关键决策 | 闸门阻断 | 耗时估算 |
+|------|------|---------|---------|---------|
+| 0-需求 | 产品经理 | <决策摘要> | 0 | — |
+| 1-设计 | 技术经理 | <决策摘要> | 0 | — |
+| ... | ... | ... | ... | ... |
+
+## 健康评分
+- 总分：<N>/10
+- 各维度：<列出>
+
+## 标签
+- 变更类型：<type>
+- 复杂度：<level>
+- 阶段瓶颈：<stage 或 null>
+- 回溯次数：<N>
+- 涉及文件数：<N>
+- 跨子系统：<是/否>
+
+## 实际结果
+- outcome：<success/degraded/hotfixed/abandoned/null>
+- 检测时间：<timestamp 或 "待标记">
+
+## 状态快照
+- 当前阶段：<阶段名>
+- 阶段进度：<进度描述>
+```
+
+### 完整性校验（归档流程入口时执行）
+
+- [ ] 文件存在且非空
+- [ ] 首行包含 `TRACE`
+- [ ] 包含 `阶段流转` 章节（含表头行）
+- [ ] 包含 `健康评分` 章节
+- [ ] 包含 `标签` 章节
+- [ ] 包含 `实际结果` 章节
+
+---
+
+## traces.jsonl（.specs/traces.jsonl，跨变更累积）
+
+机器可读轨迹记录，每次归档时由 trace_collector.py 追加一条。
+
+### 记录格式
+
+```json
+{
+  "change_id": "<change-id>",
+  "timestamp": "<ISO8601 本地偏移>",
+  "path": [0, 1, 2, 3, 4, 5, 6, 7],
+  "path_mode": "full|incremental|shortest",
+  "complexity": "LITE|STANDARD|HEAVY",
+  "decisions": [
+    {"stage": 0, "summary": "<决策摘要>", "type": "scope|architecture|task|implementation|review_fix"}
+  ],
+  "gate_blocks": {"0": 0, "1": 0, "2": 0, "3": 0, "4": 0, "5": 0, "6": 0, "7": 0},
+  "health_score": 7.8,
+  "health_dimensions": {
+    "ac_coverage": 0.85,
+    "test_completeness": 0.70,
+    "review_efficiency": 0.80,
+    "code_quality": 0.75,
+    "boundary_hygiene": 0.90,
+    "doc_completeness": 0.85,
+    "resource_efficiency": 0.65
+  },
+  "manual_interventions": 0,
+  "files_touched": 15,
+  "tags": {
+    "change_type": "feature",
+    "complexity": "HEAVY",
+    "bottleneck_stage": null,
+    "rollback_count": 0,
+    "files_touched": 15,
+    "cross_subsystem": true
+  },
+  "outcome": null,
+  "outcome_timestamp": null
+}
+```
+
+### 字段说明
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| change_id | string | 关联的 Change-ID |
+| timestamp | string | 采集时间（ISO8601 本地时区偏移） |
+| path | int[] | 经过的阶段序列 |
+| path_mode | string | full=完整路径 / incremental=已完成阶段 / shortest=最小路径 |
+| complexity | string | 复杂度级别 |
+| decisions | array | 各阶段关键决策 |
+| decisions[].stage | int\|null | 阶段编号 |
+| decisions[].summary | string | 决策摘要（≤100 字） |
+| decisions[].type | string | scope / architecture / task / implementation / review_fix |
+| gate_blocks | object | 各阶段闸门阻断次数（轮次 - 1） |
+| health_score | float\|null | 健康评分 |
+| health_dimensions | object | 各维度评分（0-1 范围） |
+| manual_interventions | int | 人工干预次数 |
+| files_touched | int | 涉及文件数 |
+| tags | object | 标签集合 |
+| outcome | string\|null | success / degraded / hotfixed / abandoned / null |
+| outcome_timestamp | string\|null | outcome 标记时间 |
+
+### 完整性校验（gap_analyzer 使用前执行）
+
+- [ ] 文件存在且非空
+- [ ] 每行可解析为合法 JSON
+- [ ] 每条记录包含 change_id / timestamp / path / path_mode / complexity 字段
+- [ ] path_mode 在 full / incremental / shortest 中取值
+- [ ] complexity 在 LITE / STANDARD / HEAVY 中取值
