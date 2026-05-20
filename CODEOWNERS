@@ -1,0 +1,5 @@
+# CODEOWNERS — flow-go
+# 所有变更必须由 @baiqiaw 审批
+
+# 默认审批者
+*       @baiqiaw

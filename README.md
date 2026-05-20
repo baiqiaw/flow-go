@@ -1,6 +1,13 @@
 # Flow-Go
 
-6 角色 × 8 阶段 AI 开发流程编排 skill。输入 `go` 即可自动路由到下一步。
+6 角色 × 8 阶段的 AI 辅助开发流程编排框架。为 AI 编程工具提供结构化的软件开发生命周期管理——从需求到验收，每一步都有明确的角色、闸门和工件。
+
+**解决的问题**：AI 编程工具擅长写代码，但缺乏项目级的流程约束。flow-go 通过状态机驱动 + 闸门检查 + 角色分工，确保每次变更都经过完整的质量流程，避免跳步、遗漏和幻觉。
+
+**核心理念**：
+- 状态驱动，不是对话驱动——`STATE.md` 是唯一状态源
+- 闸门不跳步——每个阶段有前置条件，不满足就停下
+- 角色有红线——产品经理不写代码，开发员不改需求
 
 ## 流程
 
@@ -11,27 +18,124 @@
 
 特殊流程：`归档` / `废弃` / `热修` / `回溯` / `整理` / `归档维护` / `进化分析`
 
+## 安装
+
+### 前置条件
+
+- Git
+- Python 3.8+（辅助脚本）
+- 支持的 AI 编程工具（见下方各工具安装方式）
+
+### Claude Code
+
+```bash
+# 符号链接到 Claude Code skills 目录
+ln -s /path/to/flow-go ~/.claude/skills/flow-go
+```
+
+在项目目录中输入 `flow-go` 即可触发。
+
+### Codex CLI
+
+```bash
+# 方式 1：通过 .codex-plugin 自动识别
+# 在项目根目录创建 .codex-plugin/plugin.json，指向 flow-go
+
+# 方式 2：放入全局插件目录
+ln -s /path/to/flow-go ~/.codex/plugins/flow-go
+```
+
+### Trae
+
+```bash
+# 创建符号链接到 .trae/skills/ 目录
+mkdir -p .trae/skills
+ln -s /path/to/flow-go .trae/skills/flow-go
+```
+
+### Cursor
+
+```bash
+# 创建符号链接到 .cursor/rules/ 目录
+mkdir -p .cursor/rules
+ln -s /path/to/flow-go/SKILL.md .cursor/rules/flow-go.mdc
+```
+
+### Windsurf
+
+```bash
+# 创建符号链接到 .windsurf/rules/ 目录
+mkdir -p .windsurf/rules
+ln -s /path/to/flow-go/SKILL.md .windsurf/rules/flow-go.md
+```
+
+### Cline
+
+在 Cline 的 Custom Instructions 中粘贴 flow-go 的 SKILL.md 内容，或将项目克隆到工作区中。
+
+### OpenCode
+
+```bash
+# 方式 1：使用 .opencode/skills/（自动发现）
+mkdir -p .opencode/skills
+ln -s /path/to/flow-go .opencode/skills/flow-go
+
+# 方式 2：兼容 Claude Code 路径（自动发现）
+# 已有 ~/.claude/skills/flow-go 链接时 OpenCode 会自动识别
+```
+
+### OpenClaw
+
+```bash
+# 放入 OpenClaw skills 目录
+ln -s /path/to/flow-go ~/.openclaw/skills/flow-go
+```
+
+### 更新
+
+```bash
+cd /path/to/flow-go
+git pull
+```
+
+符号链接无需更新，自动指向最新代码。
+
 ## 使用
 
-在 Claude Code / Codex CLI / OpenCode / OpenClaw 中输入：
+### 快速开始
 
-- `go` — 自动路由到当前阶段下一步
-- 阶段关键词（`需求`、`设计`、`开发`、`测试` 等）— 直接跳转
-- 描述新需求 — 自动进入 0-需求阶段
+在项目目录中，向 AI 编程工具输入：
+
+- **`flow-go`** 或 **`go`** — 自动路由到当前阶段下一步
+- **阶段关键词**（`需求`、`设计`、`开发`、`测试`、`审查`、`部署`、`验收`）— 直接跳转到指定阶段
+- **描述新需求** — 自动进入 0-需求阶段并生成 change-id
+
+### 常用命令
+
+| 输入 | 说明 |
+|------|------|
+| `go` / `下一步` | 路由到当前阶段下一步 |
+| `需求 <描述>` | 开始新需求 |
+| `开发` / `测试` / `审查` | 跳转到指定阶段 |
+| `归档` / `收工` | 归档当前变更 |
+| `继续` / `接着上次` | 恢复中断的工作 |
+| `保存` | 保存当前进度 |
 
 ### 配置
 
 在项目根目录创建 `.flowgo-config` 或用户目录 `~/.flowgo-config`：
 
 ```yaml
-test_rounds: 3
-max_files_per_task: 10
-auto_sync: true
-priority_framework: MoSCoW
-explain_level: default
-evolution_mode: auto
-complexity_threshold: 5
-bitter_pill_auto: true
+test_rounds: 3              # 测试阶段单轮修复上限
+max_files_per_task: 10      # 单任务改动文件上限
+auto_sync: true             # 决策信号自动触发知识库同步
+priority_framework: MoSCoW  # 优先级框架
+explain_level: default      # 解释详细度（default / terse）
+evolution_mode: auto        # 进化分析模式（auto / off）
+complexity_threshold: 5     # blast-radius 文件数阈值
+bitter_pill_auto: true      # 归档后自动触发苦丸审计
+preflight_check: true       # 任务阶段启用预检环
+context_budget_mode: auto   # 上下文预算模式（auto / manual / off）
 ```
 
 ## 项目结构
@@ -79,16 +183,6 @@ evals/
 - **复杂度分级**：LITE / STANDARD / HEAVY，影响闸门严格程度
 - **知识库同步**：决策信号自动触发受作用域同步，验收后全量同步
 - **进化分析**：归档后自动检测进化信号，健康评分驱动 CAPTURE/FIX 双路径
-
-## 安装
-
-将本项目链接到 Claude Code 的 skills 目录：
-
-```bash
-ln -s /path/to/flow-go ~/.claude/skills/flow-go
-```
-
-Codex CLI 通过 `.claude-plugin/plugin.json` 自动识别。
 
 ## License
 
