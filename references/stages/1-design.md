@@ -54,3 +54,16 @@
 - 每完成一个步骤后，更新 STATE.md 的 `阶段进度` 字段
 - 会话恢复时读 `阶段进度`，从对应步骤继续。已完成的 ADR/架构图/风险清单仍在 DESIGN.md
 - 阶段完成（交叉评审 PASS）时清空 `阶段进度`
+
+## 上下文需求清单
+
+| 来源工件 | 字段 | 必选/可选 | 保留方式 |
+|---------|------|---------|---------|
+| REQUIREMENT.md | 验收准则（AC） | 必选 | 原文保留 |
+| REQUIREMENT.md | 非功能需求 | 必选 | 原文保留 |
+| REQUIREMENT.md | Out of Scope | 必选 | 原文保留 |
+| REQUIREMENT.md | Principles | 必选 | 原文保留 |
+| REQUIREMENT.md | 用户故事 | 可选 | 压缩为一行 |
+| CONTEXT.md | 域语言 | 必选 | 原文保留 |
+| CONTEXT.md | 已锁决策 | 必选 | 原文保留 |
+| CONTEXT.md | 禁止清单 | 必选 | 原文保留 |
