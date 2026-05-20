@@ -8,6 +8,7 @@
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 
@@ -113,13 +114,152 @@ def check_blast_radius(project_dir, threshold=5):
     }
 
 
+def _check_quality_dimension(specs_dir):
+    """质量维度：检查 SUMMARY.md 中 verify 通过率"""
+    summary_path = os.path.join(specs_dir, "SUMMARY.md")
+    if not os.path.isfile(summary_path):
+        return {"passed": True, "detail": "SUMMARY.md 不存在，跳过质量检查", "source": "SUMMARY.md"}
+    try:
+        with open(summary_path, encoding="utf-8") as f:
+            content = f.read()
+    except OSError:
+        return {"passed": True, "detail": "SUMMARY.md 读取失败，跳过", "source": "SUMMARY.md"}
+
+    # 3 种格式：百分比 90%、分数 9/10、关键词 passed: 9
+    pct = re.search(r'verify\s*通过率[：:]\s*(\d+)%', content)
+    if pct:
+        rate = int(pct.group(1))
+        return {"passed": rate >= 80, "detail": f"verify 通过率 {rate}% ({'≥' if rate >= 80 else '<'}80%)", "source": "SUMMARY.md"}
+
+    frac = re.search(r'verify\s*通过率[：:]\s*(\d+)/(\d+)', content)
+    if frac:
+        passed, total = int(frac.group(1)), int(frac.group(2))
+        rate = round(passed / total * 100) if total > 0 else 100
+        return {"passed": rate >= 80, "detail": f"verify 通过率 {passed}/{total} ({rate}%)", "source": "SUMMARY.md"}
+
+    if "verify" not in content.lower():
+        return {"passed": True, "detail": "SUMMARY.md 无 verify 信息，跳过质量检查", "source": "SUMMARY.md"}
+
+    return {"passed": True, "detail": "verify 信息存在但无法解析具体通过率", "source": "SUMMARY.md"}
+
+
+def _check_scope_dimension(specs_dir, project_dir):
+    """范围维度：检查 git diff 改动是否超出 TASK.md 规划"""
+    task_path = os.path.join(specs_dir, "TASK.md")
+    if not os.path.isfile(task_path):
+        return {"passed": True, "detail": "TASK.md 不存在，跳过范围检查", "source": "git diff + TASK.md"}
+    try:
+        with open(task_path, encoding="utf-8") as f:
+            task_content = f.read()
+    except OSError:
+        return {"passed": True, "detail": "TASK.md 读取失败，跳过", "source": "git diff + TASK.md"}
+
+    # 提取 write_files 行
+    planned = set()
+    for m in re.finditer(r'<write_files>(.*?)</write_files>', task_content, re.S):
+        for line in m.group(1).strip().split('\n'):
+            line = line.strip()
+            if line and not line.startswith('<!--'):
+                planned.add(line)
+
+    if not planned:
+        return {"passed": True, "detail": "TASK.md 无预期文件列表，跳过范围检查", "source": "git diff + TASK.md"}
+
+    # 获取实际改动
+    try:
+        result = subprocess.run(
+            ["git", "diff", "--name-only"], cwd=project_dir,
+            capture_output=True, text=True, timeout=10,
+        )
+        actual = set(f for f in result.stdout.strip().split("\n") if f) if result.returncode == 0 else set()
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return {"passed": True, "detail": "git 不可用，跳过范围检查", "source": "git diff + TASK.md"}
+
+    out_of_scope = actual - planned
+    if out_of_scope:
+        return {"passed": False, "detail": f"改动 {len(out_of_scope)} 文件超出 TASK.md 规划: {', '.join(sorted(out_of_scope)[:5])}", "source": "git diff + TASK.md"}
+    return {"passed": True, "detail": f"改动 {len(actual)} 文件，均在 TASK.md 规划范围内", "source": "git diff + TASK.md"}
+
+
+def check_quality_gate(stage, specs_dir, project_dir):
+    """quality-gate 模式：4 维 AND 逻辑检查"""
+    quality = _check_quality_dimension(specs_dir)
+    scope = _check_scope_dimension(specs_dir, project_dir)
+    security = _check_security_dimension(specs_dir)
+    regression = _check_regression_dimension(specs_dir)
+
+    passed = quality["passed"] and scope["passed"] and security["passed"] and regression["passed"]
+    return {
+        "mode": "quality-gate",
+        "passed": passed,
+        "logic": "AND",
+        "dimensions": {"quality": quality, "scope": scope, "security": security, "regression": regression},
+    }
+
+
+DANGEROUS_PATTERNS = [
+    r"BEGIN\s+PRIVATE\s+KEY",
+    r"BEGIN\s+RSA\s+PRIVATE\s+KEY",
+    r"rm\s+-rf\s+/",
+    r"DROP\s+TABLE",
+    r"password\s*=\s*['\"]",
+]
+
+
+def _check_security_dimension(specs_dir):
+    """安全维度：扫描工件中的危险模式"""
+    matches = []
+    for fname in sorted(os.listdir(specs_dir)):
+        if not fname.endswith(".md") or fname == "TEST.md":
+            continue
+        fpath = os.path.join(specs_dir, fname)
+        if not os.path.isfile(fpath):
+            continue
+        try:
+            with open(fpath, encoding="utf-8") as f:
+                content = f.read()
+        except OSError:
+            continue
+        for pattern in DANGEROUS_PATTERNS:
+            hits = re.findall(pattern, content, re.I)
+            if hits:
+                matches.append(f"{fname}: {hits[0][:50]}")
+    if matches:
+        return {"passed": False, "detail": f"检出 {len(matches)} 处危险模式: {'; '.join(matches[:3])}", "source": "artifact scan"}
+    return {"passed": True, "detail": "未检出危险模式", "source": "artifact scan"}
+
+
+def _check_regression_dimension(specs_dir):
+    """回归维度：检查 TEST.md 中是否有原已通过用例失败"""
+    test_path = os.path.join(specs_dir, "TEST.md")
+    if not os.path.isfile(test_path):
+        return {"passed": True, "detail": "TEST.md 不存在，跳过回归检查", "source": "TEST.md"}
+    try:
+        with open(test_path, encoding="utf-8") as f:
+            content = f.read()
+    except OSError:
+        return {"passed": True, "detail": "TEST.md 读取失败，跳过", "source": "TEST.md"}
+
+    patterns = [
+        r"原已通过用例失败",
+        r"previously\s+passing.*failed",
+        r"regression",
+        r"回归.*失败",
+    ]
+    for pat in patterns:
+        hit = re.search(pat, content, re.I)
+        if hit:
+            return {"passed": False, "detail": f"TEST.md 包含回归失败记录: \"{hit.group()[:60]}\"", "source": "TEST.md"}
+    return {"passed": True, "detail": "无原已通过用例失败记录", "source": "TEST.md"}
+
+
 def main():
     parser = argparse.ArgumentParser(description="flow-go 闸门检查器")
     parser.add_argument("--stage", type=int, help="目标阶段编号 (0-7)")
     parser.add_argument("--specs-dir", help=".specs/<change-id> 目录路径")
     parser.add_argument("--complexity", choices=["lite", "standard", "heavy"], default="standard")
-    parser.add_argument("--mode", choices=["blast-radius"], help="blast-radius 模式")
-    parser.add_argument("--project-dir", help="项目根目录（blast-radius 模式）")
+    parser.add_argument("--mode", choices=["blast-radius", "quality-gate"], help="运行模式")
+    parser.add_argument("--project-dir", help="项目根目录（blast-radius / quality-gate 模式）")
     parser.add_argument("--threshold", type=int, default=5, help="文件数阈值（默认 5）")
     args = parser.parse_args()
 
@@ -127,6 +267,14 @@ def main():
         if not args.project_dir:
             parser.error("blast-radius 模式需要 --project-dir")
         result = check_blast_radius(args.project_dir, args.threshold)
+    elif args.mode == "quality-gate":
+        if args.stage is None:
+            parser.error("quality-gate 模式需要 --stage")
+        if not args.specs_dir:
+            parser.error("quality-gate 模式需要 --specs-dir")
+        if not args.project_dir:
+            parser.error("quality-gate 模式需要 --project-dir")
+        result = check_quality_gate(args.stage, args.specs_dir, args.project_dir)
     else:
         if args.stage is None:
             parser.error("工件检查模式需要 --stage")
