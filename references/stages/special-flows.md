@@ -67,6 +67,7 @@
    - 已到 7-验收且 UAT 通过 → UAT.md 已有归档段，无需额外文件
    - 未到 7-验收 → 创建 ARCHIVE.md（见 `artifacts/spec-artifacts.md`）
 4.5. 轨迹采集：执行 `python3 references/scripts/trace_collector.py --specs-dir .specs/<id> --change-id <id>`，生成 `.specs/<id>/TRACE.md` 和追加 `.specs/traces.jsonl`。采集失败不阻塞归档（输出警告继续执行）
+4.6. **进化信号自动写入 LESSONS**（AC-6）：执行 `python3 references/scripts/evolution_signal.py --specs-dir .specs/<id> --write-lessons`，将 strong_signals 格式化写入 `.specs/LESSONS.md` 的"待改进领域"章节。无 strong_signals 时输出提示并跳过
 5. LESSONS 提名：扫已有 SUMMARY 和 PROGRESS，符合提名条件的入库
 6. 临时文件清理：删除 spec 目录下所有 `*-PROGRESS.md`
    > ⚠️ 步骤 7-9 必须严格按顺序执行，不允许跳步。STATE.md 清空（步骤 9）必须在目录移动（步骤 7）和索引更新（步骤 8）完成后才执行。

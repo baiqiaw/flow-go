@@ -6,7 +6,8 @@
 
 **步骤**：
 1. 读任务定义，有歧义就停下来反问
-2. **策略复用**（可选）：grep `.specs/evolution/strategies.jsonl` 中 task_type 匹配的条目，取 score 最高的 1-2 条作为参考，声明「参考成功策略：{approach}（评分 {score}）」。无匹配则跳过
+2. **LESSONS 前置提醒**（AC-7）：grep `.specs/LESSONS.md` 中与当前 change 类型匹配的"待改进领域"条目，输出前置提醒。无匹配则跳过
+3. **策略复用**（可选）：grep `.specs/evolution/strategies.jsonl` 中 task_type 匹配的条目，取 score 最高的 1-2 条作为参考，声明「参考成功策略：{approach}（评分 {score}）」。无匹配则跳过
 3. **前置健康检查**（可选）：运行项目 linter/typecheck/test，确认基线状态。如有失败先记录为"已有问题"
 4. grep 沿用既有抽象：HTTP 请求 / 日期格式化 / 状态管理等，找到就用
 5. 扫 LESSONS.md + `.lessons.jsonl`（如存在）：用任务关键词 grep，命中的条目声明"差异是 X"
@@ -28,7 +29,8 @@
     ```
     子代理评审结果写入 SUMMARY.md 交叉评审章节。退出条件：6 维全 PASS（0 问题）。
     子代理输出异常时按 cross-review-matrix.md 失败处理策略执行（代码评审 3 轮上限）
-13. 原子提交：格式 `<type>(<change-id>): <task-id> <subject>`（仅评审通过后）
+13. **auto-verify**（AC-8，可选）：读取 `.flowgo-config` 中 `auto_verify` 配置（默认 false），若 true 则每完成子任务自动运行 `python3 references/scripts/gate_check.py --mode l1-guard --specs-dir .specs/<id> --project-dir .`，失败则输出失败项 + 建议运行 `git stash`
+14. 原子提交：格式 `<type>(<change-id>): <task-id> <subject>`（仅评审通过后）
 
 **自调节机制**（借鉴 gstack）：
 - **Blast radius check**：修复涉及 > 5 文件时，停下向用户确认范围

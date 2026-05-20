@@ -32,6 +32,47 @@ RISK_RULES = {
 # 顿悟触发阈值：同一 signature 出现此次数后生成持久洞察
 INSIGHT_THRESHOLD = 3
 
+# ── 优先级分级定义 ──────────────────────────────────────────
+# P1-P6 优先级映射条件：key=优先级, value=dict(level, label, condition_check)
+PRIORITY_LEVELS = {
+    "P1": {
+        "level": 1,
+        "label": "修崩溃",
+        "signal_types": {"gate_blocked", "hotfix_trigger"},
+        "extra_condition": "attribution_freq_gte_2",  # 归因频率≥2
+    },
+    "P2": {
+        "level": 2,
+        "label": "利用成功",
+        "signal_types": set(),  # CAPTURE 策略信号，由 health_score≥8.5 判断
+        "extra_condition": "capture_health_gte_8_5",
+    },
+    "P3": {
+        "level": 3,
+        "label": "攻克持久失败",
+        "signal_types": set(),  # 由 signature 历史次数≥3 判断
+        "extra_condition": "signature_history_gte_3",
+    },
+    "P4": {
+        "level": 4,
+        "label": "探索新方向",
+        "signal_types": set(),  # 新信号类型 或 P1-P3 无 evidence 降级
+        "extra_condition": "new_signal_or_demoted",
+    },
+    "P5": {
+        "level": 5,
+        "label": "简化",
+        "signal_types": {"blast_radius", "similar_error"},
+        "extra_condition": "frequency_eq_1",
+    },
+    "P6": {
+        "level": 6,
+        "label": "激进变异",
+        "signal_types": set(),  # 用户显式要求，无历史数据
+        "extra_condition": "user_explicit_no_history",
+    },
+}
+
 # 信号类型 → action_type 映射
 SIGNAL_ACTION_MAP = {
     "review_rework": ("modify_stage", 0.80, "交叉评审反复未通过说明阶段指南不够明确"),
@@ -190,6 +231,107 @@ def _generate_insights(current_hypotheses, history_records):
     return insights
 
 
+def _rank_hypotheses(hypotheses, history_records):
+    """为每个假设分配 P1-P6 优先级，按 P1→P6 排序返回。
+
+    遍历每个 hypothesis，根据信号类型 + 归因频率分配优先级。
+    P1-P3 条目必须有 trace_evidence（从 traces.jsonl 或 PROGRESS.md 提取），
+    无 trace_evidence 则降级到 P4，标注 demoted=true + demoted_from。
+    """
+    sig_freq = _count_signature_frequency(hypotheses, history_records)
+
+    # 收集历史中所有出现过的 signal_type，用于判断"新信号类型"
+    historical_signal_types = set()
+    for record in history_records:
+        for h in record.get("hypotheses", []):
+            for ref in h.get("signal_refs", []):
+                historical_signal_types.add(ref)
+
+    ranked = []
+
+    for h in hypotheses:
+        sig_type = h.get("signal_refs", [""])[0] if h.get("signal_refs") else ""
+        signature = h.get("signature", "")
+        freq = sig_freq.get(signature, 1)
+
+        # 尝试提取 trace_evidence
+        trace_evidence = _extract_trace_evidence(h, history_records)
+
+        priority = None
+        demoted = False
+        demoted_from = None
+
+        # ── P1: 修崩溃 — gate_blocked/hotfix_trigger + 归因频率≥2 ──
+        p1_types = PRIORITY_LEVELS["P1"]["signal_types"]
+        if sig_type in p1_types and freq >= 2:
+            priority = "P1"
+
+        # ── P3: 攻克持久失败 — signature 历史≥3次 ──
+        if priority is None and freq >= 3:
+            priority = "P3"
+
+        # ── P5: 简化 — blast_radius/similar_error + 频率=1 ──
+        p5_types = PRIORITY_LEVELS["P5"]["signal_types"]
+        if priority is None and sig_type in p5_types and freq == 1:
+            priority = "P5"
+
+        # ── P2: 利用成功 — CAPTURE 策略 + 健康评分≥8.5 ──
+        #   （CAPTURE 模式的假设 origin=CAPTURE，此处检查 origin）
+        if priority is None and h.get("origin") == "CAPTURE":
+            priority = "P2"
+
+        # ── P4: 探索新方向 — 新信号类型 ──
+        if priority is None and sig_type and sig_type not in historical_signal_types:
+            priority = "P4"
+
+        # ── 兜底：无匹配条件的统一归到 P4 ──
+        if priority is None:
+            priority = "P4"
+
+        # ── P1-P3 无 trace_evidence → 降级到 P4 ──
+        if priority in ("P1", "P2", "P3") and not trace_evidence:
+            demoted = True
+            demoted_from = priority
+            priority = "P4"
+
+        ranked.append({
+            "hypothesis_id": h.get("id", ""),
+            "priority": priority,
+            "label": PRIORITY_LEVELS[priority]["label"],
+            "signature": signature,
+            "signal_type": sig_type,
+            "trace_evidence": trace_evidence,
+            "demoted": demoted,
+            "demoted_from": demoted_from,
+        })
+
+    # 按 P1→P6 排序
+    ranked.sort(key=lambda x: PRIORITY_LEVELS[x["priority"]]["level"])
+
+    return ranked
+
+
+def _extract_trace_evidence(hypothesis, history_records):
+    """从历史记录中提取 trace_evidence（traces.jsonl 或假设的 signal_evidence）"""
+    evidence = []
+
+    # 从假设本身的 signal_evidence 提取
+    for ev in hypothesis.get("signal_evidence", []):
+        evidence.append(f"signal: {ev}")
+
+    # 从历史记录中查找同 signature 的证据
+    signature = hypothesis.get("signature", "")
+    for record in history_records:
+        for h in record.get("hypotheses", []):
+            if h.get("signature") == signature:
+                for ev in h.get("signal_evidence", []):
+                    trace = f"history[{record.get('change_id', '')}]: {ev}"
+                    if trace not in evidence:
+                        evidence.append(trace)
+
+    return evidence
+
+
 def _analyze_signal(signal):
     """从单个信号生成假设（借鉴 reflector.py:93-130 _analyze_signal）"""
     sig_type = signal.get("type", "")
@@ -284,6 +426,9 @@ def reflect(signals_payload, history_path=None):
     auto_approve = [h for h in hypotheses if h.get("auto_approve_eligible")]
     needs_approval = [h for h in hypotheses if not h.get("auto_approve_eligible")]
 
+    # 优先级排序：P1→P6
+    priority_ranking = _rank_hypotheses(hypotheses, history_records)
+
     return {
         "change_id": signals_payload.get("change_id", ""),
         "date": signals_payload.get("date", datetime.now().strftime("%Y-%m-%d")),
@@ -296,6 +441,7 @@ def reflect(signals_payload, history_path=None):
         "auto_approve": auto_approve,
         "needs_approval": needs_approval,
         "insights": insights,
+        "priority_ranking": priority_ranking,
         "created_at": datetime.now().isoformat(timespec="seconds"),
     }
 

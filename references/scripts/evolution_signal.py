@@ -364,6 +364,8 @@ def main():
     parser.add_argument("--specs-dir", required=True, help=".specs/<change-id> 目录路径")
     parser.add_argument("--traces", help="traces.jsonl 路径（可选，启用 trace 信号提取）")
     parser.add_argument("--output", help="输出 JSON 路径（默认 stdout）")
+    parser.add_argument("--write-lessons", action="store_true",
+                        help="将 strong_signals 写入 LESSONS.md（AC-6）")
     args = parser.parse_args()
 
     result = detect(args.specs_dir, traces_path=args.traces)
@@ -378,6 +380,15 @@ def main():
         print(f"信号已保存到 {args.output}", file=sys.stderr)
     else:
         print(output)
+
+    if args.write_lessons:
+        if result.get("strong_signals"):
+            from lessons_writer import write
+            lessons_path = str(Path(args.specs_dir).parent / "LESSONS.md")
+            wr = write(result, lessons_path)
+            print(f"LESSONS 写入: {wr}", file=sys.stderr)
+        else:
+            print("无强信号，跳过 LESSONS 写入", file=sys.stderr)
 
 
 if __name__ == "__main__":
