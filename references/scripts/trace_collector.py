@@ -56,14 +56,18 @@ def parse_args():
         description="轨迹采集器 — 采集 Change 执行轨迹",
         prog="trace_collector",
     )
+    # 互斥模式：常规采集 vs outcome 检查
+    mode = parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--change-id", help="常规采集模式：Change-ID（必选）")
+    mode.add_argument("--check-outcome", action="store_true", help="outcome 检查模式：扫描并更新 traces.jsonl 中 outcome 为 null 的记录")
     parser.add_argument("--specs-dir", required=True, help="spec 目录路径（必选）")
-    parser.add_argument("--change-id", required=True, help="Change-ID（必选）")
     parser.add_argument("--health-score", type=float, help="健康评分（可选，默认从 health-history.jsonl 读取）")
     parser.add_argument("--complexity", choices=["LITE", "STANDARD", "HEAVY"], help="复杂度（可选，默认从 CHANGE.md 推断）")
     parser.add_argument("--path-mode", choices=["full", "incremental", "shortest"], default="full", help="路径模式（可选，默认 full）")
     parser.add_argument("--tags", help="额外标签 JSON（可选，如 {\"change_type\":\"feature\"}）")
     parser.add_argument("--output-trace", help="TRACE.md 输出路径（可选，默认 <specs-dir>/TRACE.md）")
     parser.add_argument("--output-jsonl", help="traces.jsonl 路径（可选，默认 <specs-dir>/../traces.jsonl）")
+    parser.add_argument("--outcome-days", type=int, default=7, help="outcome 自动检测窗口天数（可选，默认 7）")
     return parser.parse_args()
 
 
@@ -257,6 +261,14 @@ def generate_trace_md(change_id, state_info, decisions, health_info, tags, compl
 def main():
     args = parse_args()
 
+    # outcome 检查模式
+    if args.check_outcome:
+        specs_dir = os.path.abspath(args.specs_dir)
+        jsonl_path = args.output_jsonl or os.path.join(specs_dir, "traces.jsonl")
+        check_outcome(specs_dir, args.outcome_days, jsonl_path)
+        return
+
+    # 常规采集模式
     specs_dir = os.path.abspath(args.specs_dir)
     if not os.path.isdir(specs_dir):
         print(f"错误：spec 目录不存在 — {args.specs_dir}", file=sys.stderr)
@@ -323,6 +335,90 @@ def main():
     print(f"轨迹已采集：{args.change_id}")
     print(f"  TRACE.md → {trace_path}")
     print(f"  traces.jsonl → {jsonl_path}")
+
+
+def check_outcome(specs_dir, outcome_days, jsonl_path):
+    """扫描 traces.jsonl 中 outcome==null 的记录，检查并更新 outcome"""
+    archive_dir = os.path.join(specs_dir, "archive")
+
+    if not os.path.isfile(jsonl_path):
+        print("traces.jsonl 不存在，无需检查", file=sys.stderr)
+        return
+
+    with open(jsonl_path, encoding="utf-8") as f:
+        lines = f.readlines()
+
+    updated = 0
+    now = datetime.now(timezone.utc)
+    new_lines = []
+
+    for line in lines:
+        line = line.strip()
+        if not line:
+            new_lines.append(line + "\n")
+            continue
+        try:
+            record = json.loads(line)
+        except json.JSONDecodeError:
+            new_lines.append(line + "\n")
+            continue
+
+        if record.get("outcome") is not None:
+            new_lines.append(line + "\n")
+            continue
+
+        change_id = record.get("change_id", "")
+        outcome = None
+
+        # 检查 archive 目录
+        if os.path.isdir(archive_dir):
+            for entry in os.listdir(archive_dir):
+                entry_path = os.path.join(archive_dir, entry)
+                if not os.path.isdir(entry_path):
+                    continue
+                # 检查 ABANDONED.md
+                if os.path.isfile(os.path.join(entry_path, "ABANDONED.md")):
+                    content = read_file(os.path.join(entry_path, "ABANDONED.md")) or ""
+                    if change_id in content:
+                        outcome = "abandoned"
+                        break
+                # 检查 CHANGE.md 是否引用该 change-id（热修标记）
+                for root, _, files in os.walk(entry_path):
+                    for fn in files:
+                        if fn == "CHANGE.md":
+                            c = read_file(os.path.join(root, fn)) or ""
+                            if "热修" in c or "hotfix" in c.lower():
+                                if change_id in c:
+                                    outcome = "hotfixed"
+                                    break
+                    if outcome:
+                        break
+                if outcome:
+                    break
+
+        # 无引用且超时 → success
+        if outcome is None:
+            ts_str = record.get("timestamp", "")
+            try:
+                ts = datetime.fromisoformat(ts_str)
+                if (now - ts).days > outcome_days:
+                    outcome = "success"
+            except (ValueError, TypeError):
+                pass
+
+        if outcome:
+            record["outcome"] = outcome
+            record["outcome_timestamp"] = now.isoformat()
+            new_lines.append(json.dumps(record, ensure_ascii=False) + "\n")
+            updated += 1
+            print(f"  {change_id} → {outcome}")
+        else:
+            new_lines.append(line + "\n")
+
+    with open(jsonl_path, "w", encoding="utf-8") as f:
+        f.writelines(new_lines)
+
+    print(f"outcome 检查完成：{updated} 条已更新")
 
 
 if __name__ == "__main__":
