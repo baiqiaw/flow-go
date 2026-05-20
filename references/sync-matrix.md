@@ -31,6 +31,18 @@
 | 项目重命名或迁移 | 更新所有引用项目名的记忆条目和文档 |
 | 跨会话只用一次的临时上下文 | 删除 |
 
+## 数据飞轮层变更
+
+| 本次对话发生的事 | 要改的文件 |
+|---|---|
+| traces.jsonl 新增/修改记录 | `gap_analyzer.py` 和 `health_calibration.py` 的输入源（无需同步其他文件） |
+| gap_analyzer 输出新 weak_slices | `.specs/LESSONS.md`（关联失败经验）+ `EVOLUTION-WEEKLY-*.md` |
+| health_calibration 输出权重建议 | SKILL.md `DIMENSIONS` 权重常量（需用户确认后手动更新） |
+| EVOLUTION-WEEKLY 生成 | `.specs/evolution/strategies.jsonl`（如有新策略捕获）+ `.specs/LESSONS.md`（如有新顿悟） |
+| outcome 字段更新（trace_collector --check-outcome） | `traces.jsonl` 对应行（原地替换） |
+| trace_collector 新增轨迹 | `.specs/<id>/TRACE.md` + `.specs/traces.jsonl` |
+| sync-matrix 本身变更 | 无下游（仅作参考查询） |
+
 ## 跨项目影响检查
 
 最容易漏改的场景:
