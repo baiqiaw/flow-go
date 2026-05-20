@@ -14,6 +14,8 @@
 | 当前阶段 | 是 | `<N>-<name>` 或 `无` | `无` | N 为 0-7，name 为阶段中文名（如 `3-开发`） |
 | 当前任务 | 是 | `<task-id>` 或 `无` | `无` | 当前正在执行或下一个要执行的任务 ID |
 | 中断任务 | 是 | `<task-id>` 或 `无` | `无` | 非空时回溯流程优先处理。仅 3-开发阶段写入 |
+| Pipeline 待续 | 是 | `<change-id>` 或 `无` | `无` | 归档衔接时写入下一个 pending change-id。用户确认启动后清空。跨会话恢复入口 |
+| 并行 Change | 是 | `<id1>,<id2>` 或 `无` | `无` | 并行活跃 change-id 列表（逗号分隔）。单 change 时为 `无` |
 | 阶段进度 | 否 | `步骤 N: <简述>` 或 `无` | `无` | 非开发阶段的轻量级检查点。进入时写入当前步骤号+简述，阶段完成时清空 |
 | 更新时间 | 是 | `YYYY-MM-DD` | 创建当天 | 用于回溯时判断搁置时长（30 天/60 天阈值） |
 
@@ -26,15 +28,19 @@
 5. `当前阶段` 值必须在 `0-需求` / `1-设计` / `2-任务` / `3-开发` / `4-测试` / `5-审查` / `6-部署` / `7-验收` 中取值
 6. `当前任务` 和 `中断任务` 值必须对应 TASK.md 中的 task id（如有活跃 change）
 7. 同一 task-id 不得同时出现在 `当前任务` 和 `中断任务`
+8. `Pipeline 待续` 非空时，值必须为 `.specs/` 下存在的 change-id 或 `.specs/PIPELINE.md` 中状态为 `pending` 的 change-id
+9. `并行 Change` 非空时，每个逗号分隔的 id 必须在 `.specs/PIPELINE.md` 中状态为 `active`
 
 ### 完整性校验（回溯流程入口时执行）
 
 - [ ] 文件存在且非空
 - [ ] 首行包含 `STATE.md`
-- [ ] 5 个字段全部存在（grep 5 个字段名）
+- [ ] 7 个字段全部存在（grep 7 个字段名：活跃 Change、当前阶段、当前任务、中断任务、Pipeline 待续、并行 Change、更新时间）
 - [ ] `活跃 Change` ≠ `无` → `.specs/<id>/` 目录存在
 - [ ] `当前阶段` ≠ `无` → 值在 8 个合法阶段名中
 - [ ] `中断任务` ≠ `无` → `当前任务` ≠ `中断任务`
+- [ ] `Pipeline 待续` 非空 → 对应 change-id 存在（.specs/ 目录或 PIPELINE.md pending）
+- [ ] `并行 Change` 非空 → 每个 id 在 PIPELINE.md 中为 active
 - [ ] `更新时间` 格式为 YYYY-MM-DD
 
 校验不通过时：输出具体缺失/不一致项，提示用户修复。不阻塞流程（降级为"无状态"模式，等同于新项目）。
@@ -42,7 +48,7 @@
 ### 模板
 
 ```markdown
-# STATE.md — flow-go 状态文件
+# STATE — flow-go 项目状态
 
 ## 活跃 Change
 - 无
@@ -56,12 +62,91 @@
 ## 中断任务
 - 无
 
+## Pipeline 待续
+- 无
+
+## 并行 Change
+- 无
+
 ## 阶段进度
 - 无
 
 ## 更新时间
 - YYYY-MM-DD
 ```
+
+---
+
+## PIPELINE.md（.specs/PIPELINE.md，跨变更，拆分时创建）
+
+### 模板
+
+```markdown
+# PIPELINE — change 排队记录
+
+| change-id | 描述 | 优先级 | 依赖 | 状态 | 文件范围 | 备注 |
+|-----------|------|--------|------|------|----------|------|
+| example-id | 示例 change | MustHave | - | active | src/** | 当前 change |
+| next-id | 下一个 change | ShouldHave | example-id | pending | src/api/** | 依赖上一个 |
+```
+
+### 状态枚举
+
+| 状态 | 含义 |
+|------|------|
+| active | 当前正在执行 |
+| pending | 等待执行（按优先级排序） |
+| completed | 已完成归档 |
+| skipped | 用户主动跳过 |
+| interrupted | 未走完全流程被暂停，可恢复 |
+
+### 格式约束
+
+1. 文件编码 UTF-8，首行 `# PIPELINE — change 排队记录`
+2. 表格为标准 Markdown 表格，列顺序固定 7 列（change-id / 描述 / 优先级 / 依赖 / 状态 / 文件范围 / 备注）
+3. `依赖` 列为 change-id（逗号分隔多个），无依赖写 `-`
+4. `文件范围` 列为 glob 模式（逗号分隔），如 `src/auth/**,src/api/login.py`
+5. `状态` 列仅取 5 个枚举值之一（active / pending / completed / skipped / interrupted）
+6. 允许同一 PIPELINE.md 中有多个 `active`（并行场景）
+
+### 完整性校验（排队管理流程入口时执行）
+
+- [ ] 文件存在且非空
+- [ ] 首行包含 `PIPELINE`
+- [ ] 包含 Markdown 表格（含 `|` 分隔符行）
+- [ ] `状态` 列值均在 5 个枚举中
+- [ ] `依赖` 列引用的 change-id 在表格中存在
+- [ ] 至少 1 行为 `active` 或 `pending` 状态
+
+---
+
+## .lock 文件（.specs/<id>/.lock，任务执行时临时创建）
+
+### 模板
+
+```json
+{
+  "task_id": "T01",
+  "files": ["src/api.py", "src/auth/login.py"],
+  "agent_id": "agent-1",
+  "timestamp": "2026-05-20T14:30:00Z"
+}
+```
+
+### 格式约束
+
+1. JSON 格式，一个 change 目录下最多一个 `.lock` 文件
+2. `task_id` 为当前正在执行的任务 ID（对应 TASK.md）
+3. `files` 列表为任务声明改动的具体文件路径（非 glob，是实际路径）
+4. `agent_id` 用于区分多 agent 场景（可选，默认 `"default"`）
+5. 生命周期：任务 SUMMARY.md 产出后删除 `.lock`；归档时随目录移动到 archive/ 自然清理
+
+### 完整性校验（残留锁检测时执行）
+
+- [ ] 文件可解析为合法 JSON
+- [ ] 包含 `task_id`、`files`、`timestamp` 字段
+- [ ] `files` 列表非空
+- [ ] `timestamp` 为 ISO8601 格式
 
 ---
 

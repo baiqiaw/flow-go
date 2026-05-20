@@ -35,7 +35,10 @@
 2. **多子系统检测**：分析需求是否涉及多个独立子系统
    - 检测标准：涉及 ≥3 个独立模块 或 影响面 ≥2 个用户角色
    - 检测到 → 建议拆分为多个 change，各自独立走流程。输出：「⚠️ 检测到多子系统需求（N 个模块 / M 个角色），建议拆分：…」
-   - 用户确认拆分 → 当前 change 保留最核心子系统，其余排队等待
+   - 用户确认拆分 → 当前 change 保留最核心子系统，其余排队等待。同时：
+     - (a) 创建 `.specs/PIPELINE.md`，写入 N 个 change 行（第 1 个 active，其余 pending），每行包含 7 列（change-id / 描述 / 优先级 / 依赖 / 状态 / 文件范围 / 备注）
+     - (b) **文件范围声明**：要求用户为每个 change 声明预期改动的文件 glob 模式（如 `src/auth/**`），填入 PIPELINE.md 的 `文件范围` 列。用于后续并行冲突检测
+     - (c) **依赖声明**：询问 change 间依赖关系（哪些 change 需要另一个先完成），填入 PIPELINE.md 的 `依赖` 列
    - 用户拒绝拆分 → 标记为"大型 change"，后续阶段自动启用分段呈现
 3. 自动生成 change-id：从描述提取核心关键词，kebab-case（2-4 词），检查 `.specs/<id>/` 不存在
 4. 写用户故事 + BDD AC（Given/When/Then），每条 AC 必须可测试
@@ -49,7 +52,7 @@
 8. 交叉评审（独立子代理，全新上下文）：grep `references/cross-review-matrix.md` 获取矩阵 A（文档评审）定义和子代理 prompt 模板。按模板构造子代理 prompt（传入工件：CHANGE.md + REQUIREMENT.md，上游：用户原始输入 + CONTEXT.md）。子代理输出评审报告到 `<change-id>-REVIEW.md`。任一维度 FAIL → 修文档 → 重新调用子代理重评（无轮数限制，文档不能偏）。6 维全 PASS → 继续。子代理输出异常时按 cross-review-matrix.md 失败处理策略执行
 9. 路径建议：grep `references/path-modes.md` 获取三种模式定义。根据需求特征（改动文件数、架构影响、部署环境）建议完整/增量/最短路径，附判断理由。用户确认或覆盖路径选择
 
-**输出**：`.specs/<id>/CHANGE.md` + `.specs/<id>/REQUIREMENT.md` + `.specs/<id>/<change-id>-REVIEW.md`
+**输出**：`.specs/<id>/CHANGE.md` + `.specs/<id>/REQUIREMENT.md` + `.specs/<id>/<change-id>-REVIEW.md` + `.specs/PIPELINE.md`（如触发拆分）
 
 **入口条件**：无（首个阶段）
 

@@ -8,6 +8,8 @@ description: >
   "新需求", "设计", "拆任务", "开发", "测试", "审查", "部署", "验收",
   "归档", "archive", "收工", "这个做完了",
   "废弃", "放弃", "abandon", "cancel",
+  "排队", "pipeline", "backlog",
+  "中断", "暂停", "interrupt", "并行", "parallel",
   "清理归档", "归档维护",
   "热修", "hotfix", "紧急修复",
   "回溯", "recall", "接着上次", "resume",
@@ -43,6 +45,7 @@ description: >
 3. 校验通过后关注：`活跃 Change` / `当前阶段` / `当前任务` / `中断任务`
 4. `中断任务` 非空 → 优先级最高，走回溯流程
 5. 尝试读 `.specs/CONTEXT.md`。不存在 → 棕地项目提醒可跑 intel-scan，不强制
+6. `Pipeline 待续` 非空且 `活跃 Change` 为空 → 优先输出「📋 Pipeline 待续：{change-id}，要开始吗？」。用户确认"开始"后执行启动流程：清空 `Pipeline 待续` 字段 → PIPELINE.md 中该 change 标记为 `active` → 创建 `.specs/<id>/` 目录 → 更新 STATE.md `活跃 Change` → 路由到 0-需求（复用拆分时已有的需求信息）。`并行 Change` 非空 → 输出当前并行状态概览
 
 ## 第二步 · 加载配置（可选）
 
@@ -105,6 +108,9 @@ trace_auto_collect: true
 | `需求` / `requirement` | 0-需求 | 产品经理 |
 | `归档` / `archive` / `收工` / `这个做完了` | 归档流程 | 当前阶段角色 |
 | `废弃` / `放弃` / `abandon` / `cancel` | 废弃流程 | 项目经理 |
+| `排队` / `pipeline` / `backlog` | 排队管理流程 | 自动 |
+| `中断` / `暂停` / `interrupt` | 中断流程 | 当前阶段角色 |
+| `并行` / `parallel` / `同时开始` | 并行启动流程 | 自动 |
 | `飞轮巡检` / `飞轮报告` / `周报` | 飞轮巡检流程 | 自动 |
 | `标记结果` / `更新 outcome` | outcome 标记流程 | 自动 |
 | `轨迹分析` / `gap 分析` | 运行 gap_analyzer.py | 自动 |
@@ -279,6 +285,8 @@ mcp__slack__post_message channel="#team" text="✅ CH-001 用户登录功能验�
 - **归档/废弃流程**：STATE.md 清空已在流程自身步骤中完成，此处不再重复
 - **轨迹采集触发**（配置项 `trace_auto_collect` 控制，默认 true）：归档流程步骤 4.5 已在 `special-flows.md` 中定义，此处仅声明配置项引用。设为 false 时跳过轨迹采集
 - 中断时：写 PROGRESS.md + 更新 `中断任务` 字段
+- **Pipeline 衔接**（归档流程完成后触发）：归档流程内部步骤 8.5 已在 `special-flows.md` 中定义（读 PIPELINE.md → 找 pending → 写 Pipeline 待续 → 提示用户）。步骤 7 此处声明：归档流程完成后如 `Pipeline 待续` 已被写入，在状态更新时输出衔接提示
+- **中断流程**（用户请求暂停/切换 change 时触发）：中断流程在 `special-flows.md` 中定义。STATE.md 更新规则：PIPELINE.md 中状态改为 `interrupted`，STATE.md 更新 `中断任务` 字段记录中断阶段，`活跃 Change` 可清空
 - **决策同步检查**：grep 本阶段「决策信号」，逐条检查产出工件是否匹配
   - 有匹配 → 输出「🔄 决策同步：N 条新决策，执行受作用域同步」然后加载 `references/sync-workflow.md` 执行受作用域同步
   - 无匹配 → 跳过

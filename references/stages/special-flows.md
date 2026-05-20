@@ -72,7 +72,9 @@
    > ⚠️ 步骤 7-9 必须严格按顺序执行，不允许跳步。STATE.md 清空（步骤 9）必须在目录移动（步骤 7）和索引更新（步骤 8）完成后才执行。
 7. 移动归档：执行 `mv .specs/<id>/ .specs/archive/<date>-<id>/`（date 格式 YYYYMMDD；如 archive 目录不存在则先 `mkdir -p .specs/archive`）。**必须在步骤 8 之前完成**，因为索引指向移动后的路径
 8. 更新归档索引：读 `.specs/archive/ARCHIVE-INDEX.md`（不存在则按 `meta-artifacts.md` 模板创建），追加新归档条目到清单表格，更新归档统计
-9. STATE.md 清理：活跃 Change / 当前阶段 / 当前任务 / 中断任务 全部清空
+8.1. **PIPELINE.md 状态更新**（如 PIPELINE.md 存在）：将当前归档 change 的状态从 `active` 改为 `completed`
+8.5. **Pipeline 衔接检查**：读取 `.specs/PIPELINE.md`（如存在），找下一个 `pending` change（按优先级排序，依赖已完成）。找到 → STATE.md 写入 `Pipeline 待续` 字段 → 输出「📋 Pipeline 下一个：{change-id} — {描述}」→ 询问用户是否立即开始。用户确认 → 走 AC-4 启动流程（清空 Pipeline 待续 → PIPELINE.md 标记 active → 创建目录 → 更新活跃 Change → 路由到 0-需求）。用户拒绝 → 保留 Pipeline 待续 字段。PIPELINE.md 不存在或无 pending → 跳过
+9. STATE.md 清理：活跃 Change / 当前阶段 / 当前任务 / 中断任务 全部清空。**注意**：`Pipeline 待续` 字段如步骤 8.5 已写入，则保留不清空
 
 **输出**：`.specs/archive/<date>-<id>/` + STATE 更新
 
@@ -86,7 +88,8 @@
 - [ ] PROGRESS.md 已清理
 - [ ] spec 目录已移动到 `.specs/archive/<date>-<id>/`（原路径已不存在）
 - [ ] 归档索引已更新
-- [ ] STATE.md 已清空
+- [ ] Pipeline 衔接已检查（PIPELINE.md 存在时）
+- [ ] STATE.md 已清空（Pipeline 待续 保留如有写入）
 
 **决策信号**：不适用（归档不产生决策，只记录状态）
 
@@ -94,7 +97,69 @@
 
 ---
 
-## 废弃
+## 中断
+
+**角色**：当前阶段对应角色。负责将未完成 change 安全暂停。
+
+**输入**：STATE.md + `.specs/<id>/` 下所有已有工件 + `.specs/PIPELINE.md`（如存在）
+
+**触发**：
+- 用户请求暂停/切换 change
+- 用户需要处理更紧急的事
+- 当前 change 未走完全流程需要搁置
+
+**步骤**：
+1. 确认中断目标：取 STATE.md 的 `活跃 Change`（必须非空）
+2. 中断确认：询问用户确认中断（区别于归档）— 输出「⚠️ 中断 {change-id}，当前阶段 {stage}，工件保留在 .specs/<id>/，可随时恢复。确认中断？」
+3. PIPELINE.md 更新（如存在）：将该 change 的状态从 `active` 改为 `interrupted`
+4. STATE.md 更新：`中断任务` 字段写入当前阶段信息（如 `3-开发/T02`），`活跃 Change` 清空，`当前阶段` 和 `当前任务` 清空
+5. 输出恢复提示：「📋 {change-id} 已中断。恢复方式：输入 `继续` 或 `resume`」
+
+**输出**：STATE.md 更新 + PIPELINE.md 状态更新
+
+**闸门**：用户显式确认中断（必须区分于归档）
+
+**自检**：
+- [ ] 中断目标已确认（活跃 Change 非空）
+- [ ] 中断已确认（非归档）
+- [ ] PIPELINE.md 状态已更新（如存在）
+- [ ] STATE.md 已更新（中断任务有值、活跃 Change 已清空）
+- [ ] 恢复提示已输出
+
+**决策信号**：不适用（中断不产生决策，只记录状态）
+
+---
+
+## 并行启动
+
+**角色**：自动。负责并行启动新 change 并检测冲突。
+
+**输入**：STATE.md + `.specs/PIPELINE.md` + 用户指定的新 change-id
+
+**触发**：
+- 用户请求并行启动新 change（当前已有 active change）
+- 用户说"并行" / "parallel" / "同时开始"
+
+**步骤**：
+1. 确认并行目标：用户指定或从 PIPELINE.md pending 列表选择
+2. **文件范围冲突检测**：读取 PIPELINE.md 中所有 `active` change 的 `文件范围` 列，与新 change 的文件范围做 glob 重叠检测
+3. 无冲突 → 继续；有冲突 → 输出「⚠️ 冲突：{新change} 的文件范围与 active {已有change} 重叠（{重叠路径}）」，建议串行执行或调整范围，阻止并行启动
+4. PIPELINE.md 更新：新 change 状态改为 `active`
+5. STATE.md 更新：`并行 Change` 字段追加新 change-id（逗号分隔）
+6. 路由到新 change 的 0-需求阶段（复用拆分时的需求信息）
+
+**输出**：PIPELINE.md + STATE.md 更新
+
+**闸门**：用户确认并行启动 + 文件范围无冲突
+
+**自检**：
+- [ ] 并行目标已确认
+- [ ] 文件范围冲突检测已执行
+- [ ] 无冲突时 PIPELINE.md 已更新
+- [ ] STATE.md 并行 Change 已追加
+- [ ] 冲突时已阻止并提示
+
+**决策信号**：不适用
 
 **角色**：项目经理。评估废弃影响并执行，不改代码。
 
@@ -141,25 +206,31 @@
 **输入**：STATE.md（必须存在）
 
 **步骤**：
-1. 读 STATE.md（活跃 Change / 当前阶段 / 中断任务）
-2. 读最近 3 个 `<task-id>-SUMMARY.md`
-3. 读 `.specs/LESSONS.md`
-4. grep 待办（`TODO` / `FIXME` / `HACK`）
-5. 搜索历史类似问题：grep `.lessons.jsonl`（如存在）中的关键词
-6. 输出"5 分钟项目摘要 + 推荐下一步"
-7. 健康趋势（如 `.specs/health-trends.jsonl` 存在）：展示最近 5 个 Change 的评分趋势，标注退步领域和改进领域
-8. 如搁置超 30 天（对比 STATE.md 更新时间），额外做 bit rot 检查（依赖更新/CI 状态/测试是否还能通过）
-9. 归档扫描：`ls .specs/archive/` 和 `ls .specs/archive/abandoned/`（如存在），输出归档统计（总数 / 最旧 / 最新）
-10. 归档老化提醒：如存在归档超过 90 天的目录，在恢复建议中追加"归档清理建议"；如活跃 Change 搁置超 60 天，建议考虑废弃
+1. 读 STATE.md（活跃 Change / 当前阶段 / 中断任务 / Pipeline 待续 / 并行 Change）
+2. **Pipeline 待续检查**：`Pipeline 待续` 非空且 `活跃 Change` 为空 → 优先输出「📋 Pipeline 待续：{change-id}，要开始吗？」，用户确认后走 AC-4 启动流程
+3. 读最近 3 个 `<task-id>-SUMMARY.md`
+4. 读 `.specs/LESSONS.md`
+5. grep 待办（`TODO` / `FIXME` / `HACK`）
+6. 搜索历史类似问题：grep `.lessons.jsonl`（如存在）中的关键词
+7. 输出"5 分钟项目摘要 + 推荐下一步"
+8. 健康趋势（如 `.specs/health-trends.jsonl` 存在）：展示最近 5 个 Change 的评分趋势，标注退步领域和改进领域
+9. 如搁置超 30 天（对比 STATE.md 更新时间），额外做 bit rot 检查（依赖更新/CI 状态/测试是否还能通过）
+10. 归档扫描：`ls .specs/archive/` 和 `ls .specs/archive/abandoned/`（如存在），输出归档统计（总数 / 最旧 / 最新）
+11. **未归档 change 扫描**：扫描 `.specs/` 下所有非 `archive/`、`evolution/` 的子目录，列出未归档 change。如有 PIPELINE.md 则从 pipeline 读取状态（interrupted 的 change 列为可恢复候选）
+12. **残留锁检测**：扫描 `.specs/` 下所有 `.lock` 文件，检查对应任务是否已有 SUMMARY.md（有 SUMMARY 的锁视为残留，提示清理）
+13. 归档老化提醒：如存在归档超过 90 天的目录，在恢复建议中追加"归档清理建议"；如活跃 Change 搁置超 60 天，建议考虑废弃
 
 **输出**：项目摘要 + 阶段恢复建议
 
 **闸门**：用户确认恢复目标阶段
 
 **自检**：
-- [ ] STATE.md 已读
+- [ ] STATE.md 已读（含 Pipeline 待续 + 并行 Change）
+- [ ] Pipeline 待续已检查
 - [ ] 最近 3 个 SUMMARY 已扫
 - [ ] 搁置时长已检查
+- [ ] 未归档 change 已扫描
+- [ ] 残留锁已检测
 - [ ] 归档统计已输出
 
 **决策信号**：不适用（回溯不产生决策，只恢复上下文）
