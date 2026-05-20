@@ -66,6 +66,7 @@
 4. 写归档记录：在 spec 目录下创建归档文件
    - 已到 7-验收且 UAT 通过 → UAT.md 已有归档段，无需额外文件
    - 未到 7-验收 → 创建 ARCHIVE.md（见 `artifacts/spec-artifacts.md`）
+4.5. 轨迹采集：执行 `python3 references/scripts/trace_collector.py --specs-dir .specs/<id> --change-id <id>`，生成 `.specs/<id>/TRACE.md` 和追加 `.specs/traces.jsonl`。采集失败不阻塞归档（输出警告继续执行）
 5. LESSONS 提名：扫已有 SUMMARY 和 PROGRESS，符合提名条件的入库
 6. 临时文件清理：删除 spec 目录下所有 `*-PROGRESS.md`
    > ⚠️ 步骤 7-9 必须严格按顺序执行，不允许跳步。STATE.md 清空（步骤 9）必须在目录移动（步骤 7）和索引更新（步骤 8）完成后才执行。
@@ -81,6 +82,7 @@
 - [ ] 归档目标已确认（非空、非 archive）
 - [ ] 已有工件已盘点
 - [ ] 归档原因已记录
+- [ ] 轨迹已采集（TRACE.md 已生成，traces.jsonl 已追加；采集失败不影响归档）
 - [ ] PROGRESS.md 已清理
 - [ ] spec 目录已移动到 `.specs/archive/<date>-<id>/`（原路径已不存在）
 - [ ] 归档索引已更新
@@ -114,6 +116,7 @@
 6. 更新归档索引
 7. STATE.md 清理（如废弃的是活跃 Change → 清空全部字段）
 8. LESSONS 提名（从 PROGRESS 中提取已排除方案）
+9. outcome 标记：如 `.specs/traces.jsonl` 存在该 change-id 的记录且 `outcome` 为 null，更新为 `abandoned`（无需运行 trace_collector，直接原地修改 traces.jsonl 对应行）
 
 **输出**：`.specs/archive/abandoned/<date>-<id>/ABANDONED.md` + STATE 更新
 
