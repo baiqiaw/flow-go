@@ -346,3 +346,66 @@
 - [ ] 每条记录包含 change_id / timestamp / path / path_mode / complexity 字段
 - [ ] path_mode 在 full / incremental / shortest 中取值
 - [ ] complexity 在 LITE / STANDARD / HEAVY 中取值
+
+---
+
+## EVOLUTION-WEEKLY-YYYYMMDD.md（.specs/evolution/EVOLUTION-WEEKLY-YYYYMMDD.md）
+
+飞轮巡检周报，由手动触发（`飞轮巡检`）或周期触发（`/loop 7d`）生成。
+
+### 格式
+
+```markdown
+# 飞轮周报 — YYYY/MM/DD
+
+## 报告周期
+- 起始：YYYY-MM-DD
+- 截止：YYYY-MM-DD
+
+## 归档统计
+- 归档数量：N 个
+- 平均健康评分：N.N / 10
+- 复杂度分布：LITE N / STANDARD N / HEAVY N
+
+## 健康评分趋势
+| 周次 | 评分 | 变化 | 归档数 |
+|------|------|------|--------|
+| W1 | 7.2 | — | 2 |
+| W2 | 7.8 | +0.6 | 3 |
+
+## Top-3 薄弱切片（来自 gap_analyzer.py）
+| 排名 | 维度 | 切片 | 偏差 | 关联教训 |
+|------|------|------|------|---------|
+| 1 | complexity | HEAVY | -2.0 | L-003 |
+| 2 | change_type | refactor | -1.5 | — |
+| 3 | bottleneck_stage | 4-测试 | -1.2 | — |
+
+## 权重校准建议（来自 health_calibration.py）
+| 维度 | 当前权重 | 建议权重 | 相关性 |
+|------|---------|---------|--------|
+| ac_coverage | 0.22 | 0.28 | 0.82 |
+| doc_completeness | 0.10 | 0.06 | 0.20 |
+
+## 新增 LESSONS 候选
+| 编号 | 归因 | 建议 | 需确认 |
+|------|------|------|--------|
+| INS-001 | HEAVY 任务测试不充分 | 增加 HEAVY 类型强制测试轮次 | 是 |
+
+## 策略捕获记录
+| 策略 ID | 类型 | 做法 | 评分 |
+|---------|------|------|------|
+| S-001 | feature | 先写 verify 再写实现 | 88 |
+
+## 下一步建议
+1. <基于薄弱切片的改进行动>
+2. <基于权重校准的调整建议>
+3. <基于 LESSONS 候选的流程优化>
+```
+
+### 完整性校验
+
+- [ ] 文件名包含有效日期（YYYYMMDD）
+- [ ] 包含「报告周期」章节
+- [ ] 包含「健康评分趋势」章节（含表头行）
+- [ ] 包含「Top-3 薄弱切片」章节
+- [ ] 包含「下一步建议」章节
