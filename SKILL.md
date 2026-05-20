@@ -15,6 +15,8 @@ description: >
   "clean up docs", "/sync", "/neat", "同步一下", "整理文档", "整理一下",
   "更新记忆", "梳理一下", "收尾",
   "进化分析", "反思一下", "检查进化", "进化信号", "进化状态", "归因",
+  "飞轮巡检", "飞轮报告", "周报", "标记结果", "更新 outcome",
+  "轨迹分析", "gap 分析", "校准评分", "校准权重",
   或任何描述新功能/新需求的短语（且当前无活跃 change）。
   Cross-platform: works on Claude Code, OpenAI Codex, OpenCode, and OpenClaw.
 ---
@@ -103,6 +105,10 @@ trace_auto_collect: true
 | `需求` / `requirement` | 0-需求 | 产品经理 |
 | `归档` / `archive` / `收工` / `这个做完了` | 归档流程 | 当前阶段角色 |
 | `废弃` / `放弃` / `abandon` / `cancel` | 废弃流程 | 项目经理 |
+| `飞轮巡检` / `飞轮报告` / `周报` | 飞轮巡检流程 | 自动 |
+| `标记结果` / `更新 outcome` | outcome 标记流程 | 自动 |
+| `轨迹分析` / `gap 分析` | 运行 gap_analyzer.py | 自动 |
+| `校准评分` / `校准权重` | 运行 health_calibration.py | 自动 |
 | `清理归档` / `归档维护` / `archive cleanup` | 归档维护流程 | 运维 |
 | `热修` / `hotfix` / `紧急修复` | 热修流程 | 开发员→技术经理 |
 | `回溯` / `recall` | 回溯流程 | 自动 |
@@ -271,6 +277,7 @@ mcp__slack__post_message channel="#team" text="✅ CH-001 用户登录功能验�
 - 产出工件时：更新 `当前阶段` + `当前任务`
 - 全部完成归档后：清空 `活跃 Change` / `当前阶段` / `当前任务`
 - **归档/废弃流程**：STATE.md 清空已在流程自身步骤中完成，此处不再重复
+- **轨迹采集触发**（配置项 `trace_auto_collect` 控制，默认 true）：归档流程步骤 4.5 已在 `special-flows.md` 中定义，此处仅声明配置项引用。设为 false 时跳过轨迹采集
 - 中断时：写 PROGRESS.md + 更新 `中断任务` 字段
 - **决策同步检查**：grep 本阶段「决策信号」，逐条检查产出工件是否匹配
   - 有匹配 → 输出「🔄 决策同步：N 条新决策，执行受作用域同步」然后加载 `references/sync-workflow.md` 执行受作用域同步
@@ -284,6 +291,12 @@ mcp__slack__post_message channel="#team" text="✅ CH-001 用户登录功能验�
   - FIX 触发时 → 输出「🧬 进化信号已触发：{原因}，正在运行进化分析」→ 执行 `evolution_signal.py` → `evolution_reflect.py --mode reflect` → 展示假设和归因摘要
   - 有顿悟时 → 额外输出「💡 顿悟：{root_cause}（已出现 N 次）→ 建议：{advice}」，请用户确认是否写入 LESSONS.md
   - **BITTER PILL 路径**（规则自审计）：归档后自动执行 `python3 references/scripts/bitter_pill_audit.py --skill-dir <flow-go skill 目录> --output .specs/<id>/BITTER-PILL.md` → 产出 KEEP/REVIEW/CANDIDATE 审计报告 → CANDIDATE 项需用户逐条确认 → 输出「💊 苦丸审计完成：KEEP N / REVIEW N / CANDIDATE N」
+- **飞轮巡检**（手动触发：`飞轮巡检` / `飞轮报告` / `周报`；周期触发：`/loop 7d "运行 flow-go 飞轮巡检"`）：
+  1. 运行 `gap_analyzer.py` → 输出 Gap 报告
+  2. 运行 `health_calibration.py` → 输出校准报告（样本 ≥ `flywheel_min_samples` 时）
+  3. 检查跨 Change 聚合顿悟 → 复用 `evolution_reflect.py` 写入逻辑
+  4. 生成 `EVOLUTION-WEEKLY-YYYYMMDD.md`（模板见 `meta-artifacts.md`）
+  5. 顿悟候选请用户确认
 
 ## 自检（产出路由声明前）
 
