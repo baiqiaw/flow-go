@@ -1,10 +1,10 @@
 # STATE — flow-go 项目状态
 
 ## 活跃 Change
-- evolution-pipeline-p0
+- 无
 
 ## 当前阶段
-- 7-验收
+- 无
 
 ## 当前任务
 - 无
