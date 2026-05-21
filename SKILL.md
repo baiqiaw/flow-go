@@ -78,6 +78,7 @@ description: >
 | 配置项 | 默认值 | 说明 |
 |--------|--------|------|
 | `test_rounds` | 3 | 4-测试阶段单轮修复上限 |
+| `test_depth` | standard | 4-测试阶段默认深度（smoke / standard / deep） |
 | `max_files_per_task` | 10 | 3-开发阶段单任务改动文件上限 |
 | `auto_sync` | true | 决策信号自动触发知识库受作用域同步 |
 | `priority_framework` | MoSCoW | 2-任务阶段默认优先级框架 |
@@ -98,6 +99,7 @@ description: >
 **配置格式**（YAML，每行一个键值对）：
 ```yaml
 test_rounds: 3
+test_depth: standard
 max_files_per_task: 10
 auto_sync: true
 priority_framework: MoSCoW
