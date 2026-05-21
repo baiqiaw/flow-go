@@ -13,7 +13,8 @@ flow-go 的参考文档。SKILL.md 路由后按阶段名/工件名加载对应�
 | `1-design.md` | 1-设计 | 技术经理 | ~35 |
 | `2-task.md` | 2-任务 | 项目经理 | ~35 |
 | `3-develop.md` | 3-开发 | 开发员 | ~50 |
-| `4-test.md` | 4-测试 | 测试员 | ~40 |
+| `4-test.md` | 4-测试 | 测试员 | ~120 |
+| `issue-taxonomy.md` | 4-测试（参考） | 测试员 | ~80 |
 | `5-review.md` | 5-审查 | 技术经理 | ~40 |
 | `6-deploy.md` | 6-部署 | 运维 | ~30 |
 | `7-acceptance.md` | 7-验收 | 产品经理+项目经理 | ~30 |
@@ -25,7 +26,7 @@ flow-go 的参考文档。SKILL.md 路由后按阶段名/工件名加载对应�
 | `meta-artifacts.md` | STATE.md / CONTEXT.md / LESSONS.md / ARCHIVE-INDEX.md | ~110 |
 | `spec-artifacts.md` | CHANGE.md / REQUIREMENT.md / DESIGN.md / ARCHIVE.md | ~125 |
 | `task-artifacts.md` | TASK.md / SUMMARY.md / PROGRESS.md | ~120 |
-| `quality-artifacts.md` | TEST.md / REVIEW.md / 交叉评审报告 | ~150 |
+| `quality-artifacts.md` | TEST.md / REVIEW.md / 交叉评审报告 | ~180 |
 | `deploy-artifacts.md` | DEPLOY.md / UAT.md / ABANDONED.md | ~110 |
 
 ### artifacts/examples/ — 工件标准示例
@@ -54,7 +55,7 @@ flow-go 的参考文档。SKILL.md 路由后按阶段名/工件名加载对应�
 
 **依赖**：所有脚本仅使用 Python 标准库（argparse/json/os/re/sys/subprocess/datetime/pathlib/random/collections），无第三方依赖。Python >= 3.8。
 
-- `health_scorer.py` — 7 维健康评分 + 趋势追踪（health-history.jsonl）+ 趋势分析/自动分诊
+- `health_scorer.py` — 7 维健康评分 + 趋势追踪（health-history.jsonl）+ 趋势分析/自动分诊 + `--test-score` 测试阶段 5 维专属评分
 - `risk_analyzer.py` — 风险矩阵（概率×影响，1-9 分）+ EMV 量化 + 三点估算 + 应对策略推荐
 - `task_estimator.py` — 蒙特卡洛工时预测（5000 次迭代，置信区间）
 - `lessons_indexer.py` — LESSONS 索引器（JSONL 生成 + 关键词搜索）

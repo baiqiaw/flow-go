@@ -217,10 +217,162 @@ def _read_previous_score(history_path):
         return None
 
 
+# ── 测试阶段专属健康评分 ──
+
+TEST_DIMENSIONS = {
+    "functional_coverage": {
+        "label": "功能覆盖",
+        "weight": 0.30,
+    },
+    "performance_compliance": {
+        "label": "性能达标",
+        "weight": 0.20,
+    },
+    "security_compliance": {
+        "label": "安全合规",
+        "weight": 0.20,
+    },
+    "compatibility_coverage": {
+        "label": "兼容覆盖",
+        "weight": 0.15,
+    },
+    "observability_completeness": {
+        "label": "可观测完备",
+        "weight": 0.15,
+    },
+}
+
+
+def score_functional_coverage(data):
+    """功能覆盖：AC 通过率"""
+    total = data.get("ac_total", 0)
+    passed = data.get("ac_passed", 0)
+    if total == 0:
+        return 100
+    return round(passed / total * 100)
+
+
+def score_performance_compliance(data):
+    """性能达标：性能指标达标率"""
+    total = data.get("perf_total", 0)
+    passed = data.get("perf_passed", 0)
+    if total == 0:
+        return 100  # 未测性能=不扣分（可能已跳过）
+    return round(passed / total * 100)
+
+
+def score_security_compliance(data):
+    """安全合规：按发现扣分"""
+    score = 100
+    score -= data.get("sec_critical", 0) * 40
+    score -= data.get("sec_high", 0) * 20
+    score -= data.get("sec_medium", 0) * 10
+    score -= data.get("sec_low", 0) * 5
+    return max(0, score)
+
+
+def score_compatibility_coverage(data):
+    """兼容覆盖：目标平台覆盖"""
+    total = data.get("compat_total", 0)
+    tested = data.get("compat_tested", 0)
+    if total == 0:
+        return 100
+    return round(tested / total * 100)
+
+
+def score_observability_completeness(data):
+    """可观测完备：检查点覆盖"""
+    total = data.get("obs_total", 0)
+    covered = data.get("obs_covered", 0)
+    if total == 0:
+        return 100
+    return round(covered / total * 100)
+
+
+TEST_SCORERS = {
+    "functional_coverage": score_functional_coverage,
+    "performance_compliance": score_performance_compliance,
+    "security_compliance": score_security_compliance,
+    "compatibility_coverage": score_compatibility_coverage,
+    "observability_completeness": score_observability_completeness,
+}
+
+
+def compute_test_score(data):
+    """计算测试阶段专属健康评分（5 维加权）
+
+    输入 JSON 字段：
+      ac_total, ac_passed,
+      perf_total, perf_passed（可选，0 表示跳过性能轮次），
+      sec_critical, sec_high, sec_medium, sec_low（各严重度发现数），
+      compat_total, compat_tested（目标平台数 / 已测平台数），
+      obs_total, obs_covered（可观测检查点总数 / 已覆盖数），
+      baseline_score（可选，上次测试评分，用于对比）
+    """
+    scores = {}
+    for dim, scorer in TEST_SCORERS.items():
+        scores[dim] = scorer(data)
+
+    total_weight = sum(d["weight"] for d in TEST_DIMENSIONS.values())
+    composite = sum(
+        scores[dim] * TEST_DIMENSIONS[dim]["weight"]
+        for dim in TEST_DIMENSIONS
+    ) / total_weight
+    composite = round(composite, 1)
+
+    if composite >= 85:
+        grade = "A"
+    elif composite >= 70:
+        grade = "B"
+    elif composite >= 55:
+        grade = "C"
+    else:
+        grade = "D"
+
+    # 基线对比
+    baseline = data.get("baseline_score")
+    delta = None
+    if baseline is not None:
+        delta = round(composite - baseline, 1)
+
+    return {
+        "scores": {TEST_DIMENSIONS[dim]["label"]: scores[dim] for dim in TEST_DIMENSIONS},
+        "composite": composite,
+        "grade": grade,
+        "baseline_delta": delta,
+        "dimensions": {
+            dim: {
+                "score": scores[dim],
+                "weight": TEST_DIMENSIONS[dim]["weight"],
+            }
+            for dim in TEST_DIMENSIONS
+        },
+    }
+
+
+def format_test_score_markdown(report):
+    """格式化测试健康评分为 Markdown"""
+    lines = ["## 测试健康评分\n"]
+    delta_str = ""
+    if report["baseline_delta"] is not None:
+        d = report["baseline_delta"]
+        icon = "⚠️" if d < 0 else "✅"
+        delta_str = f" {icon} 较基线{'下降' if d < 0 else '上升'} {abs(d)} 分"
+    lines.append(f"**综合评分：{report['composite']} / 100（{report['grade']}级）**{delta_str}\n")
+    lines.append("| 维度 | 分数 | 权重 |")
+    lines.append("|------|------|------|")
+    for dim_label, score in report["scores"].items():
+        w = next(d["weight"] for d in TEST_DIMENSIONS.values() if d["label"] == dim_label)
+        lines.append(f"| {dim_label} | {score} | {int(w * 100)}% |")
+    return "\n".join(lines)
+
+
 def main():
     parser = argparse.ArgumentParser(description="项目健康评分器")
     parser.add_argument("input", nargs="?", help="JSON 文件路径，省略则读 stdin")
     parser.add_argument("--format", choices=["markdown", "json"], default="markdown")
+    parser.add_argument("--test-score", action="store_true",
+                        help="计算测试阶段专属健康评分（5 维）")
     args = parser.parse_args()
 
     source = open(args.input, encoding="utf-8") if args.input else sys.stdin
@@ -232,6 +384,14 @@ def main():
     finally:
         if args.input:
             source.close()
+
+    if args.test_score:
+        report = compute_test_score(data)
+        if args.format == "json":
+            print(json.dumps(report, ensure_ascii=False, indent=2))
+        else:
+            print(format_test_score_markdown(report))
+        return
 
     report = compute(data)
 
