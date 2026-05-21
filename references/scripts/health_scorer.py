@@ -202,6 +202,21 @@ def format_markdown(report):
     return "\n".join(lines)
 
 
+def _read_previous_score(history_path):
+    """读取 health-history.jsonl 最后一条的 composite 值"""
+    try:
+        with open(history_path, encoding="utf-8") as f:
+            lines = [l.strip() for l in f if l.strip()]
+    except (FileNotFoundError, OSError):
+        return None
+    if not lines:
+        return None
+    try:
+        return json.loads(lines[-1]).get("composite")
+    except (json.JSONDecodeError, IndexError):
+        return None
+
+
 def main():
     parser = argparse.ArgumentParser(description="项目健康评分器")
     parser.add_argument("input", nargs="?", help="JSON 文件路径，省略则读 stdin")
@@ -227,14 +242,18 @@ def main():
 
     # 趋势追踪：追加到 health-history.jsonl
     try:
+        hp = os.environ.get("FLOWGO_HISTORY", "health-history.jsonl")
+        previous = _read_previous_score(hp)
         entry = json.dumps({
             "ts": datetime.now(timezone.utc).isoformat(),
             "change_id": data.get("change_id", "unknown"),
             "composite": report["composite"], "grade": report["grade"],
             "rag": report["rag"],
             "scores": report["scores"],
+            "changes_made": data.get("files_changed", data.get("changes_made", [])),
+            "trigger": data.get("trigger", "manual"),
+            "previous_score": previous,
         }, ensure_ascii=False)
-        hp = os.environ.get("FLOWGO_HISTORY", "health-history.jsonl")
         with open(hp, "a", encoding="utf-8") as hf:
             hf.write(entry + "\n")
     except OSError:
@@ -255,7 +274,11 @@ def analyze_trends(history_path="health-history.jsonl", window=10):
     records = []
     for line in lines[-window:]:
         try:
-            records.append(json.loads(line))
+            rec = json.loads(line)
+            rec.setdefault("changes_made", [])
+            rec.setdefault("trigger", None)
+            rec.setdefault("previous_score", None)
+            records.append(rec)
         except json.JSONDecodeError:
             continue
 

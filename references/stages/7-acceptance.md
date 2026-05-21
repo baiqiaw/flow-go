@@ -10,6 +10,7 @@
 3. 验收签字：产品经理 + 项目经理分别签字
 4. LESSONS 提名：扫 SUMMARY 和 PROGRESS，把符合提名条件的失败经验入库（同时更新 `.lessons.jsonl` 索引）
 5. **进化反思**：
+   - **对话反馈分类**（5a，在信号检测前执行）：运行 `python3 references/scripts/feedback_classifier.py --specs-dir .specs/<id> --output .specs/evolution/<id>-classified-feedback.json`，将 `.specs/<id>/user-inputs.jsonl` 中的用户输入分为 project/skill/preference/noise 四类。skill 反馈追加到 `.specs/evolution/skill-feedback.jsonl`。输出分类摘要。LITE 模式使用 `--complexity LITE` 降低灵敏度
    - 运行 `python3 references/scripts/evolution_signal.py --specs-dir .specs/<id>` 从本 Change 工件提取信号
    - 如 `should_reflect=true` → 运行 `python3 references/scripts/evolution_reflect.py --signals <signals.json>` 生成假设
    - 假设输出到 `.specs/evolution/<id>-hypotheses.json`

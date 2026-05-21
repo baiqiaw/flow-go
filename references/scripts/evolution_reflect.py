@@ -27,10 +27,52 @@ RISK_RULES = {
     "add_lesson": "low",
     "modify_script": "high",
     "modify_review_checklist": "low",
+    "suggest_improvement": "medium",
 }
 
 # 顿悟触发阈值：同一 signature 出现此次数后生成持久洞察
 INSIGHT_THRESHOLD = 3
+
+# ── 优先级分级定义 ──────────────────────────────────────────
+# P1-P6 优先级映射条件：key=优先级, value=dict(level, label, condition_check)
+PRIORITY_LEVELS = {
+    "P1": {
+        "level": 1,
+        "label": "修崩溃",
+        "signal_types": {"gate_blocked", "hotfix_trigger"},
+        "extra_condition": "attribution_freq_gte_2",  # 归因频率≥2
+    },
+    "P2": {
+        "level": 2,
+        "label": "利用成功",
+        "signal_types": set(),  # CAPTURE 策略信号，由 health_score≥8.5 判断
+        "extra_condition": "capture_health_gte_8_5",
+    },
+    "P3": {
+        "level": 3,
+        "label": "攻克持久失败",
+        "signal_types": set(),  # 由 signature 历史次数≥3 判断
+        "extra_condition": "signature_history_gte_3",
+    },
+    "P4": {
+        "level": 4,
+        "label": "探索新方向",
+        "signal_types": set(),  # 新信号类型 或 P1-P3 无 evidence 降级
+        "extra_condition": "new_signal_or_demoted",
+    },
+    "P5": {
+        "level": 5,
+        "label": "简化",
+        "signal_types": {"blast_radius", "similar_error"},
+        "extra_condition": "frequency_eq_1",
+    },
+    "P6": {
+        "level": 6,
+        "label": "激进变异",
+        "signal_types": set(),  # 用户显式要求，无历史数据
+        "extra_condition": "user_explicit_no_history",
+    },
+}
 
 # 信号类型 → action_type 映射
 SIGNAL_ACTION_MAP = {
@@ -190,6 +232,107 @@ def _generate_insights(current_hypotheses, history_records):
     return insights
 
 
+def _rank_hypotheses(hypotheses, history_records):
+    """为每个假设分配 P1-P6 优先级，按 P1→P6 排序返回。
+
+    遍历每个 hypothesis，根据信号类型 + 归因频率分配优先级。
+    P1-P3 条目必须有 trace_evidence（从 traces.jsonl 或 PROGRESS.md 提取），
+    无 trace_evidence 则降级到 P4，标注 demoted=true + demoted_from。
+    """
+    sig_freq = _count_signature_frequency(hypotheses, history_records)
+
+    # 收集历史中所有出现过的 signal_type，用于判断"新信号类型"
+    historical_signal_types = set()
+    for record in history_records:
+        for h in record.get("hypotheses", []):
+            for ref in h.get("signal_refs", []):
+                historical_signal_types.add(ref)
+
+    ranked = []
+
+    for h in hypotheses:
+        sig_type = h.get("signal_refs", [""])[0] if h.get("signal_refs") else ""
+        signature = h.get("signature", "")
+        freq = sig_freq.get(signature, 1)
+
+        # 尝试提取 trace_evidence
+        trace_evidence = _extract_trace_evidence(h, history_records)
+
+        priority = None
+        demoted = False
+        demoted_from = None
+
+        # ── P1: 修崩溃 — gate_blocked/hotfix_trigger + 归因频率≥2 ──
+        p1_types = PRIORITY_LEVELS["P1"]["signal_types"]
+        if sig_type in p1_types and freq >= 2:
+            priority = "P1"
+
+        # ── P3: 攻克持久失败 — signature 历史≥3次 ──
+        if priority is None and freq >= 3:
+            priority = "P3"
+
+        # ── P5: 简化 — blast_radius/similar_error + 频率=1 ──
+        p5_types = PRIORITY_LEVELS["P5"]["signal_types"]
+        if priority is None and sig_type in p5_types and freq == 1:
+            priority = "P5"
+
+        # ── P2: 利用成功 — CAPTURE 策略 + 健康评分≥8.5 ──
+        #   （CAPTURE 模式的假设 origin=CAPTURE，此处检查 origin）
+        if priority is None and h.get("origin") == "CAPTURE":
+            priority = "P2"
+
+        # ── P4: 探索新方向 — 新信号类型 ──
+        if priority is None and sig_type and sig_type not in historical_signal_types:
+            priority = "P4"
+
+        # ── 兜底：无匹配条件的统一归到 P4 ──
+        if priority is None:
+            priority = "P4"
+
+        # ── P1-P3 无 trace_evidence → 降级到 P4 ──
+        if priority in ("P1", "P2", "P3") and not trace_evidence:
+            demoted = True
+            demoted_from = priority
+            priority = "P4"
+
+        ranked.append({
+            "hypothesis_id": h.get("id", ""),
+            "priority": priority,
+            "label": PRIORITY_LEVELS[priority]["label"],
+            "signature": signature,
+            "signal_type": sig_type,
+            "trace_evidence": trace_evidence,
+            "demoted": demoted,
+            "demoted_from": demoted_from,
+        })
+
+    # 按 P1→P6 排序
+    ranked.sort(key=lambda x: PRIORITY_LEVELS[x["priority"]]["level"])
+
+    return ranked
+
+
+def _extract_trace_evidence(hypothesis, history_records):
+    """从历史记录中提取 trace_evidence（traces.jsonl 或假设的 signal_evidence）"""
+    evidence = []
+
+    # 从假设本身的 signal_evidence 提取
+    for ev in hypothesis.get("signal_evidence", []):
+        evidence.append(f"signal: {ev}")
+
+    # 从历史记录中查找同 signature 的证据
+    signature = hypothesis.get("signature", "")
+    for record in history_records:
+        for h in record.get("hypotheses", []):
+            if h.get("signature") == signature:
+                for ev in h.get("signal_evidence", []):
+                    trace = f"history[{record.get('change_id', '')}]: {ev}"
+                    if trace not in evidence:
+                        evidence.append(trace)
+
+    return evidence
+
+
 def _analyze_signal(signal):
     """从单个信号生成假设（借鉴 reflector.py:93-130 _analyze_signal）"""
     sig_type = signal.get("type", "")
@@ -284,6 +427,9 @@ def reflect(signals_payload, history_path=None):
     auto_approve = [h for h in hypotheses if h.get("auto_approve_eligible")]
     needs_approval = [h for h in hypotheses if not h.get("auto_approve_eligible")]
 
+    # 优先级排序：P1→P6
+    priority_ranking = _rank_hypotheses(hypotheses, history_records)
+
     return {
         "change_id": signals_payload.get("change_id", ""),
         "date": signals_payload.get("date", datetime.now().strftime("%Y-%m-%d")),
@@ -296,6 +442,7 @@ def reflect(signals_payload, history_path=None):
         "auto_approve": auto_approve,
         "needs_approval": needs_approval,
         "insights": insights,
+        "priority_ranking": priority_ranking,
         "created_at": datetime.now().isoformat(timespec="seconds"),
     }
 
@@ -461,11 +608,151 @@ def capture(specs_dir, health_score, output_path=None, strategies_path=None):
     return result
 
 
+# ── SUGGEST 模式（用户反馈驱动的改进建议）───────────────────
+
+def _jaccard_similarity(text_a, text_b):
+    """计算两个文本的 Jaccard 相似度（基于字符级 unigram）"""
+    set_a = set(text_a.lower())
+    set_b = set(text_b.lower())
+    if not set_a or not set_b:
+        return 0.0
+    return len(set_a & set_b) / len(set_a | set_b)
+
+
+def _cluster_feedback(feedback_records, threshold=0.4):
+    """按内容相似度聚类 skill 反馈（极简 Jaccard 聚类）"""
+    clusters = []
+    for record in feedback_records:
+        content = record.get("content", "")
+        merged = False
+        for cluster in clusters:
+            rep = cluster[0].get("content", "")
+            if _jaccard_similarity(content, rep) >= threshold:
+                cluster.append(record)
+                merged = True
+                break
+        if not merged:
+            clusters.append([record])
+    return clusters
+
+
+def _generate_suggestion_hypothesis(cluster, change_id):
+    """从一个反馈聚类生成改进假设"""
+    contents = [r.get("content", "") for r in cluster]
+    representative = contents[0][:150]
+    frequency = len(cluster)
+    stages = list(set(r.get("stage", "") for r in cluster))
+
+    confidence = min(0.5 + frequency * 0.1, 0.9)
+    risk = RISK_RULES.get("suggest_improvement", "medium")
+
+    # 一次性洞察判断使用反馈原始置信度（非重新计算的值）
+    original_max_confidence = max(r.get("confidence", 0) for r in cluster)
+
+    hypothesis = {
+        "id": f"H{datetime.now().strftime('%Y%m%d')}{hash(representative) % 1000:03d}",
+        "created_at": datetime.now().isoformat(timespec="seconds"),
+        "origin": "SUGGEST",
+        "parent_hypothesis_id": None,
+        "signal_refs": ["user_suggestion"],
+        "signal_evidence": contents[:5],
+        "root_cause": f"用户在 {', '.join(stages)} 阶段反馈：{representative[:80]}",
+        "action_type": "suggest_improvement",
+        "target_file": "SKILL.md / references/（用户确认后手动修改）",
+        "confidence": round(confidence, 2),
+        "risk": risk,
+        "reasoning": f"来自 {frequency} 条相似用户反馈，代表真实使用痛点",
+        "auto_approve_eligible": False,  # SUGGEST 路径不自动写入
+        "proposed_change": (
+            f"[suggest] {representative[:100]}\n"
+            f"  frequency: {frequency}\n"
+            f"  stages: {', '.join(stages)}"
+        ),
+        "signature": f"suggest_improvement-user_suggestion",
+        "status": "pending",
+    }
+
+    # 一次性洞察：只有 1 条反馈但原始置信度较高时
+    insight = None
+    if frequency == 1 and original_max_confidence >= 0.8:
+        insight = {
+            "id": f"INS-{datetime.now().strftime('%Y%m%d')}-oneshot",
+            "signature": hypothesis["signature"],
+            "source_hypothesis_ids": [hypothesis["id"]],
+            "trigger_count": 1,
+            "root_cause": hypothesis["root_cause"],
+            "advice": hypothesis["proposed_change"],
+            "one_shot": True,
+            "status": "pending_approval",
+            "generated_at": datetime.now().isoformat(timespec="seconds"),
+        }
+
+    return hypothesis, insight
+
+
+def suggest(feedback_path, history_path=None, output_path=None):
+    """SUGGEST 模式：从 skill-feedback.jsonl 生成改进假设"""
+    feedback_path = Path(feedback_path)
+    if not feedback_path.is_file():
+        return {"suggested": False, "reason": "skill-feedback.jsonl 不存在"}
+
+    # 读取未处理的反馈
+    records = []
+    for line in feedback_path.read_text(encoding="utf-8").strip().split("\n"):
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            record = json.loads(line)
+            if not record.get("processed", False):
+                records.append(record)
+        except json.JSONDecodeError:
+            continue
+
+    if not records:
+        return {"suggested": False, "reason": "无未处理的 skill 反馈"}
+
+    # 聚类
+    clusters = _cluster_feedback(records)
+    change_ids = list(set(r.get("change_id", "") for r in records))
+
+    # 生成假设和洞察
+    hypotheses = []
+    insights = []
+    for cluster in clusters:
+        hyp, ins = _generate_suggestion_hypothesis(
+            cluster, change_ids[0] if change_ids else ""
+        )
+        hypotheses.append(hyp)
+        if ins:
+            insights.append(ins)
+
+    result = {
+        "mode": "suggest",
+        "processed_feedback_count": len(records),
+        "cluster_count": len(clusters),
+        "hypothesis_count": len(hypotheses),
+        "insight_count": len(insights),
+        "change_ids": change_ids,
+        "hypotheses": hypotheses,
+        "insights": insights,
+        "created_at": datetime.now().isoformat(timespec="seconds"),
+    }
+
+    if output_path:
+        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+        Path(output_path).write_text(
+            json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+
+    return result
+
+
 # ── CLI 入口 ─────────────────────────────────────────────
 
 def main():
     parser = argparse.ArgumentParser(description="进化反思器 + 策略捕获")
-    parser.add_argument("--mode", choices=["reflect", "capture"], default="reflect",
+    parser.add_argument("--mode", choices=["reflect", "capture", "suggest"], default="reflect",
                         help="运行模式（默认 reflect）")
     parser.add_argument("--output", help="输出 JSON 路径（默认 stdout）")
     # reflect 模式
@@ -475,7 +762,19 @@ def main():
     parser.add_argument("--specs-dir", help=".specs/<change-id> 目录路径（capture 模式）")
     parser.add_argument("--health-score", type=float, help="健康评分（capture 模式）")
     parser.add_argument("--strategies", default=None, help="策略库 JSONL 路径")
+    # suggest 模式
+    parser.add_argument("--feedback", default=None, help="skill-feedback.jsonl 路径（suggest 模式）")
     args = parser.parse_args()
+
+    if args.mode == "suggest":
+        if not args.feedback:
+            parser.error("suggest 模式需要 --feedback")
+        result = suggest(args.feedback, history_path=args.history, output_path=args.output)
+        if not args.output:
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+        else:
+            print(f"SUGGEST 假设已保存到 {args.output}", file=sys.stderr)
+        return
 
     if args.mode == "capture":
         if not args.specs_dir or not args.health_score:

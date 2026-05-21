@@ -7,6 +7,7 @@
 
 用法：
     python3 evolution_signal.py --specs-dir .specs/<change-id>
+    python3 evolution_signal.py --specs-dir .specs/<change-id> --traces .specs/traces.jsonl
     python3 evolution_signal.py --specs-dir .specs/<change-id> --output .specs/evolution/<change-id>-signals.json
 """
 import argparse
@@ -26,6 +27,7 @@ STRONG_SIGNALS = {
     "hotfix_trigger": "触发热修流程",
     "user_correction": "用户明确纠正了输出或行为",
     "gate_blocked": "闸门检查未通过，被阻断",
+    "gate_blocked_trace": "Trace 记录显示闸门被阻断",
 }
 
 MEDIUM_SIGNALS = {
@@ -64,6 +66,11 @@ ATTRIBUTIONS = {
         "tag": "🟠 过度谨慎",
         "reason": "闸门阻断说明前置条件定义可能过严或工件格式不匹配",
         "advice": "检查闸门条件是否需要调整，或工件模板是否已更新",
+    },
+    "gate_blocked_trace": {
+        "tag": "🟠 过度谨慎",
+        "reason": "Trace 数据显示闸门被阻断，说明前置条件或工件质量存在问题",
+        "advice": "检查 trace 中阻断的阶段，分析根因并修复",
     },
     "similar_error": {
         "tag": "🟡 思路太单一",
@@ -162,6 +169,39 @@ def _extract_gate_blocked(specs_dir):
     return evidence
 
 
+def _read_traces(traces_path, change_id):
+    """从 traces.jsonl 读取指定 change_id 的 gate_blocks"""
+    try:
+        with open(traces_path, encoding="utf-8") as f:
+            lines = [l.strip() for l in f if l.strip()]
+    except (FileNotFoundError, OSError):
+        return None
+    for line in reversed(lines):
+        try:
+            record = json.loads(line)
+            if record.get("change_id") == change_id:
+                return record.get("gate_blocks", {})
+        except json.JSONDecodeError:
+            continue
+    return None
+
+
+def _extract_gate_blocked_trace(specs_dir, traces_path=None):
+    """从 traces.jsonl 提取闸门阻断信号（结构化数据优先）"""
+    if traces_path is None:
+        return []
+    change_id = Path(specs_dir).name
+    gate_blocks = _read_traces(traces_path, change_id)
+    if gate_blocks is None:
+        print(f"警告：traces.jsonl 读取失败或无 {change_id} 记录，跳过 trace 信号", file=sys.stderr)
+        return []
+    evidence = []
+    for stage, count in gate_blocks.items():
+        if isinstance(count, int) and count > 0:
+            evidence.append(f"阶段 {stage} 阻断 {count} 次")
+    return evidence
+
+
 def _extract_similar_error(specs_dir):
     """检查 TEST.md 中的错误是否在 LESSONS.md 已有记录"""
     test_content = _read_file(Path(specs_dir) / "TEST.md")
@@ -228,6 +268,7 @@ STRONG_EXTRACTORS = {
     "test_repeated": _extract_test_repeated,
     "hotfix_trigger": _extract_hotfix,
     "gate_blocked": _extract_gate_blocked,
+    "gate_blocked_trace": lambda sd: [],  # 由 detect() 单独调用，不自动执行
 }
 
 MEDIUM_EXTRACTORS = {
@@ -238,13 +279,15 @@ MEDIUM_EXTRACTORS = {
 }
 
 
-def detect(specs_dir):
+def detect(specs_dir, traces_path=None):
     """从工件目录提取信号，返回信号报告"""
     specs_path = Path(specs_dir)
     change_id = specs_path.name
 
     strong_signals = []
     for sig_type, extractor in STRONG_EXTRACTORS.items():
+        if sig_type == "gate_blocked_trace":
+            continue  # 由下方 trace 逻辑单独处理
         evidence = extractor(specs_dir)
         if evidence:
             attr = ATTRIBUTIONS.get(sig_type, {})
@@ -260,6 +303,23 @@ def detect(specs_dir):
             })
 
     medium_signals = []
+
+    # Trace 信号（优先于正则，source="trace" 标记）
+    if traces_path:
+        trace_evidence = _extract_gate_blocked_trace(specs_dir, traces_path)
+        if trace_evidence:
+            attr = ATTRIBUTIONS.get("gate_blocked_trace", {})
+            strong_signals.append({
+                "type": "gate_blocked_trace",
+                "level": "strong",
+                "description": STRONG_SIGNALS["gate_blocked_trace"],
+                "evidence": trace_evidence,
+                "source": "trace",
+                "attribution": attr.get("tag", ""),
+                "reason": attr.get("reason", ""),
+                "advice": attr.get("advice", ""),
+            })
+
     for sig_type, extractor in MEDIUM_EXTRACTORS.items():
         evidence = extractor(specs_dir)
         if evidence:
@@ -302,10 +362,13 @@ def detect(specs_dir):
 def main():
     parser = argparse.ArgumentParser(description="进化信号检测器")
     parser.add_argument("--specs-dir", required=True, help=".specs/<change-id> 目录路径")
+    parser.add_argument("--traces", help="traces.jsonl 路径（可选，启用 trace 信号提取）")
     parser.add_argument("--output", help="输出 JSON 路径（默认 stdout）")
+    parser.add_argument("--write-lessons", action="store_true",
+                        help="将 strong_signals 写入 LESSONS.md（AC-6）")
     args = parser.parse_args()
 
-    result = detect(args.specs_dir)
+    result = detect(args.specs_dir, traces_path=args.traces)
 
     output = json.dumps(result, ensure_ascii=False, indent=2)
 
@@ -317,6 +380,15 @@ def main():
         print(f"信号已保存到 {args.output}", file=sys.stderr)
     else:
         print(output)
+
+    if args.write_lessons:
+        if result.get("strong_signals"):
+            from lessons_writer import write
+            lessons_path = str(Path(args.specs_dir).parent / "LESSONS.md")
+            wr = write(result, lessons_path)
+            print(f"LESSONS 写入: {wr}", file=sys.stderr)
+        else:
+            print("无强信号，跳过 LESSONS 写入", file=sys.stderr)
 
 
 if __name__ == "__main__":

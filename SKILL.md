@@ -8,6 +8,8 @@ description: >
   "新需求", "设计", "拆任务", "开发", "测试", "审查", "部署", "验收",
   "归档", "archive", "收工", "这个做完了",
   "废弃", "放弃", "abandon", "cancel",
+  "排队", "pipeline", "backlog",
+  "中断", "暂停", "interrupt", "并行", "parallel",
   "清理归档", "归档维护",
   "热修", "hotfix", "紧急修复",
   "回溯", "recall", "接着上次", "resume",
@@ -36,13 +38,34 @@ description: >
 
 ---
 
+## 前置动作 · 用户输入记录
+
+**在执行任何步骤之前，先将当前用户输入追加到 `.specs/<id>/user-inputs.jsonl`**。
+
+这是每轮对话的初始动作（横切关注点），不是编号步骤。类似于角色红线，贯穿所有阶段。
+
+- 仅在 STATE.md 有活跃 Change 时执行（无活跃 Change 时跳过）
+- 格式（每行一个 JSON 对象，append-only）：
+  ```json
+  {"ts":"2026-05-21T14:30:00","change_id":"xxx","stage":"3-开发","input":"用户原始输入"}
+  ```
+- `change_id`：从 STATE.md `活跃 Change` 字段读取
+- `stage`：从 STATE.md `当前阶段` 字段读取
+- `input`：用户消息原文（保留原文，不做加工）
+- `.specs/<id>/` 目录已存在（有活跃 Change 时），直接追加
+- 每条用户消息只追加一次
+- 此数据用于验收阶段的反馈分类和 SUGGEST 进化路径，详见 `references/scripts/feedback_classifier.py`
+
+---
+
 ## 第一步 · 读状态
 
 1. 尝试读项目根目录 `STATE.md`。不存在 → 新项目，跳过
-2. 存在时执行完整性校验：grep `references/artifacts/meta-artifacts.md` 的「完整性校验」清单。校验不通过 → 输出具体问题，降级为"无状态"模式（等同新项目）
+2. 存在时执行完整性校验：调用 `python3 references/scripts/validate_state.py --state-file STATE.md --specs-dir .specs/`。脚本不可用时回退到 grep `references/artifacts/meta-artifacts.md` 的「完整性校验」清单。校验不通过 → 输出脚本返回的具体问题，降级为"无状态"模式（等同新项目）。如脚本返回 `fixes` 字段非空 → 额外提示「可自动修复缺失字段，回复"修复"即可」
 3. 校验通过后关注：`活跃 Change` / `当前阶段` / `当前任务` / `中断任务`
 4. `中断任务` 非空 → 优先级最高，走回溯流程
 5. 尝试读 `.specs/CONTEXT.md`。不存在 → 棕地项目提醒可跑 intel-scan，不强制
+6. `Pipeline 待续` 非空且 `活跃 Change` 为空 → 优先输出「📋 Pipeline 待续：{change-id}，要开始吗？」。用户确认"开始"后执行启动流程：清空 `Pipeline 待续` 字段 → PIPELINE.md 中该 change 标记为 `active` → 创建 `.specs/<id>/` 目录 → 更新 STATE.md `活跃 Change` → 路由到 0-需求（复用拆分时已有的需求信息）。`并行 Change` 非空 → 输出当前并行状态概览
 
 ## 第二步 · 加载配置（可选）
 
@@ -70,6 +93,7 @@ description: >
 | `flywheel_outcome_days` | 7 | outcome 自动检测窗口（天） |
 | `context_summarize` | false | 是否默认启用上下文摘要（false=全文加载，true=摘要加载） |
 | `trace_auto_collect` | true | 归档时是否自动采集轨迹 |
+| `user_input_capture` | true | 是否记录用户输入到 user-inputs.jsonl |
 
 **配置格式**（YAML，每行一个键值对）：
 ```yaml
@@ -86,6 +110,7 @@ flywheel_outcome_check: true
 flywheel_outcome_days: 7
 context_summarize: false
 trace_auto_collect: true
+user_input_capture: true
 ```
 
 ## 第三步 · 意图路由
@@ -105,6 +130,9 @@ trace_auto_collect: true
 | `需求` / `requirement` | 0-需求 | 产品经理 |
 | `归档` / `archive` / `收工` / `这个做完了` | 归档流程 | 当前阶段角色 |
 | `废弃` / `放弃` / `abandon` / `cancel` | 废弃流程 | 项目经理 |
+| `排队` / `pipeline` / `backlog` | 排队管理流程 | 自动 |
+| `中断` / `暂停` / `interrupt` | 中断流程 | 当前阶段角色 |
+| `并行` / `parallel` / `同时开始` | 并行启动流程 | 自动 |
 | `飞轮巡检` / `飞轮报告` / `周报` | 飞轮巡检流程 | 自动 |
 | `标记结果` / `更新 outcome` | outcome 标记流程 | 自动 |
 | `轨迹分析` / `gap 分析` | 运行 gap_analyzer.py | 自动 |
@@ -159,6 +187,8 @@ trace_auto_collect: true
 | 6-部署 | REVIEW.md（严重项经循环评审确认 = 0） | LITE 跳过此阶段 | 提示先跑 5-审查 |
 | 7-验收 | DEPLOY.md + 全部工件 | 4-测试通过 + CHANGE.md AC 全部满足 | 提示先跑 6-部署 |
 
+**闸门脚本化验证**：可调用 `python3 references/scripts/gate_check.py --stage <N> --specs-dir .specs/<id> --complexity <level>` 自动检查工件存在性。脚本不可用时回退到手动检查上表。
+
 ### 闸门后续 · Handoff 检查（仅阶段转换时执行）
 
 Handoff 检查在**首次阶段转换**时执行，验证上游上下文是否已传递。跨会话恢复时跳过——工件仍在即说明上下文已传递，重复验证无增量价值，只浪费 token。
@@ -175,7 +205,7 @@ Handoff 检查在**首次阶段转换**时执行，验证上游上下文是否�
 
 ```
 ✅ 路由：<阶段名>
-✅ Change-ID：<id>
+✅ Change-ID：<id>（新需求场景尚未生成时写"待生成"）
 ✅ 复杂度：<LITE / STANDARD / HEAVY>
 ✅ 当前角色：<角色名>
 ✅ 角色红线：<一句话提醒该角色的禁止事项>
@@ -279,6 +309,8 @@ mcp__slack__post_message channel="#team" text="✅ CH-001 用户登录功能验�
 - **归档/废弃流程**：STATE.md 清空已在流程自身步骤中完成，此处不再重复
 - **轨迹采集触发**（配置项 `trace_auto_collect` 控制，默认 true）：归档流程步骤 4.5 已在 `special-flows.md` 中定义，此处仅声明配置项引用。设为 false 时跳过轨迹采集
 - 中断时：写 PROGRESS.md + 更新 `中断任务` 字段
+- **Pipeline 衔接**（归档流程完成后触发）：归档流程内部步骤 8.5 已在 `special-flows.md` 中定义（读 PIPELINE.md → 找 pending → 写 Pipeline 待续 → 提示用户）。步骤 7 此处声明：归档流程完成后如 `Pipeline 待续` 已被写入，在状态更新时输出衔接提示
+- **中断流程**（用户请求暂停/切换 change 时触发）：中断流程在 `special-flows.md` 中定义。STATE.md 更新规则：PIPELINE.md 中状态改为 `interrupted`，STATE.md 更新 `中断任务` 字段记录中断阶段，`活跃 Change` 可清空
 - **决策同步检查**：grep 本阶段「决策信号」，逐条检查产出工件是否匹配
   - 有匹配 → 输出「🔄 决策同步：N 条新决策，执行受作用域同步」然后加载 `references/sync-workflow.md` 执行受作用域同步
   - 无匹配 → 跳过
@@ -291,6 +323,16 @@ mcp__slack__post_message channel="#team" text="✅ CH-001 用户登录功能验�
   - FIX 触发时 → 输出「🧬 进化信号已触发：{原因}，正在运行进化分析」→ 执行 `evolution_signal.py` → `evolution_reflect.py --mode reflect` → 展示假设和归因摘要
   - 有顿悟时 → 额外输出「💡 顿悟：{root_cause}（已出现 N 次）→ 建议：{advice}」，请用户确认是否写入 LESSONS.md
   - **BITTER PILL 路径**（规则自审计）：归档后自动执行 `python3 references/scripts/bitter_pill_audit.py --skill-dir <flow-go skill 目录> --output .specs/<id>/BITTER-PILL.md` → 产出 KEEP/REVIEW/CANDIDATE 审计报告 → CANDIDATE 项需用户逐条确认 → 输出「💊 苦丸审计完成：KEEP N / REVIEW N / CANDIDATE N」
+  - **SUGGEST 路径**（改进建议，归档后触发，与 CAPTURE/FIX 同级）：
+    - 触发条件：`.specs/evolution/skill-feedback.jsonl` 存在且含 `processed=false` 的条目
+    - 路径行为：
+      1. 读取未处理的 skill 反馈，按频率排序
+      2. 运行 `evolution_reflect.py --mode suggest --feedback .specs/evolution/skill-feedback.jsonl --output .specs/evolution/<id>-suggestions.json`
+      3. 生成改进假设报告
+      4. 展示假设摘要，请用户逐条确认
+      5. 用户确认的改进 → 记录到建议列表，由用户手动执行修改
+      6. 全部处理完成后，将 skill-feedback.jsonl 中的对应条目标记为 `processed=true`
+    - **安全原则**：SUGGEST 路径不自动修改 SKILL.md 或 references/ 下的任何文件
 - **飞轮巡检**（手动触发：`飞轮巡检` / `飞轮报告` / `周报`；周期触发：`/loop 7d "运行 flow-go 飞轮巡检"`）：
   1. 运行 `gap_analyzer.py` → 输出 Gap 报告
   2. 运行 `health_calibration.py` → 输出校准报告（样本 ≥ `flywheel_min_samples` 时）
