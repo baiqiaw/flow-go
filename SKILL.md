@@ -61,7 +61,7 @@ description: >
 ## 第一步 · 读状态
 
 1. 尝试读项目根目录 `STATE.md`。不存在 → 新项目，跳过
-2. 存在时执行完整性校验：grep `references/artifacts/meta-artifacts.md` 的「完整性校验」清单。校验不通过 → 输出具体问题，降级为"无状态"模式（等同新项目）
+2. 存在时执行完整性校验：调用 `python3 references/scripts/validate_state.py --state-file STATE.md --specs-dir .specs/`。脚本不可用时回退到 grep `references/artifacts/meta-artifacts.md` 的「完整性校验」清单。校验不通过 → 输出脚本返回的具体问题，降级为"无状态"模式（等同新项目）。如脚本返回 `fixes` 字段非空 → 额外提示「可自动修复缺失字段，回复"修复"即可」
 3. 校验通过后关注：`活跃 Change` / `当前阶段` / `当前任务` / `中断任务`
 4. `中断任务` 非空 → 优先级最高，走回溯流程
 5. 尝试读 `.specs/CONTEXT.md`。不存在 → 棕地项目提醒可跑 intel-scan，不强制
@@ -187,6 +187,8 @@ user_input_capture: true
 | 6-部署 | REVIEW.md（严重项经循环评审确认 = 0） | LITE 跳过此阶段 | 提示先跑 5-审查 |
 | 7-验收 | DEPLOY.md + 全部工件 | 4-测试通过 + CHANGE.md AC 全部满足 | 提示先跑 6-部署 |
 
+**闸门脚本化验证**：可调用 `python3 references/scripts/gate_check.py --stage <N> --specs-dir .specs/<id> --complexity <level>` 自动检查工件存在性。脚本不可用时回退到手动检查上表。
+
 ### 闸门后续 · Handoff 检查（仅阶段转换时执行）
 
 Handoff 检查在**首次阶段转换**时执行，验证上游上下文是否已传递。跨会话恢复时跳过——工件仍在即说明上下文已传递，重复验证无增量价值，只浪费 token。
@@ -203,7 +205,7 @@ Handoff 检查在**首次阶段转换**时执行，验证上游上下文是否�
 
 ```
 ✅ 路由：<阶段名>
-✅ Change-ID：<id>
+✅ Change-ID：<id>（新需求场景尚未生成时写"待生成"）
 ✅ 复杂度：<LITE / STANDARD / HEAVY>
 ✅ 当前角色：<角色名>
 ✅ 角色红线：<一句话提醒该角色的禁止事项>
