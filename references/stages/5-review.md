@@ -16,7 +16,7 @@
    - R6 领域扭曲：变量名用技术词而非领域词
    - **HEAVY 模式**：complexity == heavy 时，此步骤后强制 dispatch 独立子 Agent 进行二次 cross-review（全新上下文，避免审查盲区）
 4. 安全审查：`git diff --staged | grep -i "api_key\|token\|secret\|password"` + OWASP 快查
-4b. **Blast radius 验证**：`python3 references/scripts/gate_check.py --mode blast-radius --project-dir <项目根>` → exceeded=true 时标记为审查发现
+4b. **Blast radius 验证**：`python3 references/scripts/gate_check.py --mode blast-radius --change-id <id> --project-dir <项目根>` → exceeded=true 时标记为审查发现
 5. **循环评审直到 0 问题**（严重项）：
    ```
    loop {

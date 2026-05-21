@@ -29,7 +29,7 @@
     ```
     子代理评审结果写入 SUMMARY.md 交叉评审章节。退出条件：6 维全 PASS（0 问题）。
     子代理输出异常时按 cross-review-matrix.md 失败处理策略执行（代码评审 3 轮上限）
-13. **auto-verify**（AC-8，可选）：读取 `.flowgo-config` 中 `auto_verify` 配置（默认 false），若 true 则每完成子任务自动运行 `python3 references/scripts/gate_check.py --mode l1-guard --specs-dir .specs/<id> --project-dir .`，失败则输出失败项 + 建议运行 `git stash`
+13. **auto-verify**（AC-8，可选）：读取 `.flowgo-config` 中 `auto_verify` 配置（默认 false），若 true 则每完成子任务自动运行 `python3 references/scripts/gate_check.py --mode l1-guard --change-id <id> --specs-dir .specs/<id> --project-dir .`，失败则输出失败项 + 建议运行 `git stash`
 14. 原子提交：格式 `<type>(<change-id>): <task-id> <subject>`（仅评审通过后）
 
 **自调节机制**（借鉴 gstack）：

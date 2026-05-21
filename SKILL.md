@@ -206,7 +206,7 @@ user_input_capture: true
 | 6-部署 | REVIEW.md（严重项经循环评审确认 = 0） | LITE 跳过此阶段 | 提示先跑 5-审查 |
 | 7-验收 | DEPLOY.md + 全部工件 | 4-测试通过 + CHANGE.md AC 全部满足 | 提示先跑 6-部署 |
 
-**闸门脚本化验证**：可调用 `python3 references/scripts/gate_check.py --stage <N> --specs-dir .specs/<id> --complexity <level>` 自动检查工件存在性。脚本不可用时回退到手动检查上表。
+**闸门脚本化验证**：可调用 `python3 references/scripts/gate_check.py --stage <N> --change-id <id> --specs-dir .specs/<id> --complexity <level>` 自动检查工件存在性。脚本不可用时回退到手动检查上表。
 
 ### 闸门后续 · Handoff 检查（仅阶段转换时执行）
 
