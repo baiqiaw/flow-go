@@ -1,0 +1,12 @@
+{
+  "change_id": "state-parallel",
+  "classified_at": "2026-05-21T21:23:38",
+  "total_inputs": 2,
+  "stats": {
+    "project": 0,
+    "skill": 0,
+    "preference": 0,
+    "noise": 2
+  },
+  "results": []
+}
