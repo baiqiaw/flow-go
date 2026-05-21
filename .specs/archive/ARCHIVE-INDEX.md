@@ -3,9 +3,9 @@
 > 归档时自动维护，回溯时可选读取。不需要手动编辑。
 
 ## 归档统计
-- 正常归档：6 个
+- 正常归档：7 个
 - 废弃归档：0 个
-- 最近归档：2026-05-21-state-parallel
+- 最近归档：2026-05-21-worktree-isolation
 - 最早归档：2026-05-20-data-flywheel
 
 ## 归档清单
@@ -19,6 +19,7 @@
 | 2026-05-20-skill-evolver-optimization | skill-evolver-optimization | 7-验收 | 2026-05-20 | 保留 |
 | 2026-05-21-skill-evolution-feedback | skill-evolution-feedback | 7-验收 | 2026-05-21 | 保留 |
 | 2026-05-21-state-parallel | state-parallel | 7-验收 | 2026-05-21 | 保留 |
+| 2026-05-21-worktree-isolation | worktree-isolation | 7-验收 | 2026-05-21 | 保留 |
 
 ### 废弃
 | 归档目录 | Change-ID | 废弃原因 | 归档日期 | 保留状态 |
