@@ -5,6 +5,13 @@
 **输入**：`.specs/<id>/DESIGN.md` + `REQUIREMENT.md`
 
 **步骤**：
+0. **Worktree 创建**（如 per-change STATE.md 的 `worktree_path` 为 `无`）：
+   - (a) 调用 EnterWorktree（name: <change-id>），创建分支 `change/<id>` 的 worktree，路径为 `.claude/worktrees/<id>`
+   - (b) 进入 worktree 后，更新 `.specs/<id>/STATE.md` 的 `worktree_path` 为 worktree 绝对路径
+   - (c) 在 worktree 中验证：`git branch --show-current` 输出 `change/<id>`
+   - (d) worktree_path 已有值 → 跳过（已在 worktree 中）
+   - (e) EnterWorktree 不可用 → 回退到 Bash：`git worktree add .claude/worktrees/<id> -b change/<id>` + `cd .claude/worktrees/<id>`
+   - 详细流程见 `references/worktree-lifecycle.md`「创建流程」章节
 1. 拆原子任务：每个任务 ≤ 1 fresh context 可完成（通常 < 100 行代码）
 2. 标并行 `[P]` + 依赖图：无依赖的任务标 `[P]`，有依赖的列 `depends_on`
 3. 每个任务定义 XML 块：id / name / read_files / write_files / action / verify / done / depends_on + 可选的 context_budget / agent_hint
@@ -38,6 +45,7 @@
 - [ ] context_budget 与估算结果一致（若启用）
 - [ ] 并行分组已体现在依赖图描述中（若启用）
 - [ ] 交叉评审报告 6 维全 PASS
+- [ ] worktree 已创建且 worktree_path 已更新（如适用）
 
 **决策信号**：
 - 任务拆分产生新依赖关系

@@ -73,8 +73,9 @@ description: >
    - **活跃数 = 1**：自动读 `.specs/<id>/STATE.md` 获取当前阶段/当前任务/中断任务/阶段进度。将 change-id 写入会话上下文供后续阶段使用。**零额外操作**——用户体验与旧格式完全一致
    - **活跃数 > 1**：列出所有活跃 change（change-id + 阶段），用 AskUserQuestion 让用户选择要操作的 change → 读选中的 `.specs/<id>/STATE.md` → 将 change-id 写入会话上下文
 5. 选定 change 后检查：`中断任务` 非空 → 优先级最高，走回溯流程
-6. 尝试读 `.specs/CONTEXT.md`。不存在 → 棕地项目提醒可跑 intel-scan，不强制
-7. `Pipeline 待续` 非空且活跃 Change 表为空 → 优先输出「📋 Pipeline 待续：{change-id}，要开始吗？」。用户确认"开始"后执行启动流程：清空 `Pipeline 待续` 字段 → PIPELINE.md 中该 change 标记为 `active` → 创建 `.specs/<id>/` 目录 + `.specs/<id>/STATE.md` → 更新 STATE.md 索引表添加行 → 路由到 0-需求
+6. Worktree 检查：读取 `.specs/<id>/STATE.md` 的 `worktree_path` 字段。非空 → 检查 worktree 目录是否存在（`test -d <path>`）。存在 → 记录到会话上下文。不存在但路径有记录 → 输出「⚠️ worktree 已丢失：<path>，建议手动恢复或废弃」
+7. 尝试读 `.specs/CONTEXT.md`。不存在 → 棕地项目提醒可跑 intel-scan，不强制
+8. `Pipeline 待续` 非空且活跃 Change 表为空 → 优先输出「📋 Pipeline 待续：{change-id}，要开始吗？」。用户确认"开始"后执行启动流程：清空 `Pipeline 待续` 字段 → PIPELINE.md 中该 change 标记为 `active` → 创建 `.specs/<id>/` 目录 + `.specs/<id>/STATE.md` → 更新 STATE.md 索引表添加行 → 路由到 0-需求
 
 ## 第二步 · 加载配置（可选）
 
@@ -165,6 +166,13 @@ user_input_capture: true
 
 > 完整路由流程图见 `references/routing-diagram.md`（按需加载）。
 
+### Worktree 进入
+
+路由确定后、闸门检查前，检查目标 change 的 worktree 状态：
+- per-change STATE.md 的 `worktree_path` 非空且 worktree 目录存在 → 调用 EnterWorktree（path: <worktree_path>）进入 worktree
+- `worktree_path` 为空 → 留在主仓库（阶段 0-1 不需要 worktree）
+- 非空但目录不存在 → 输出「⚠️ worktree 已丢失：<path>」，建议用户手动恢复或废弃
+
 ## 第三步半 · 复杂度分级
 
 路由确定后、闸门检查前，自动判定当前 change 的复杂度级别：
@@ -251,6 +259,7 @@ Handoff 检查在**首次阶段转换**时执行，验证上游上下文是否�
 | 6-部署 | `stages/6-deploy.md` | `artifacts/deploy-artifacts.md`（DEPLOY） |
 | 7-验收 | `stages/7-acceptance.md` | `artifacts/deploy-artifacts.md`（UAT） |
 | 热修/归档/废弃/回溯/归档维护 | `stages/special-flows.md`（grep 对应流程） | 按需（归档→`meta-artifacts.md`，废弃→`deploy-artifacts.md`） |
+| worktree 相关 | grep 加载 `references/worktree-lifecycle.md` 对应流程 | — |
 
 **Token 预算**：按阶段按需加载 reference 文件（禁止整读）。每个阶段仅加载 `stages/<N>-<name>.md` + 对应 `artifacts/<category>.md`，需额外参考时才 grep 其他文件。评审子代理调用不计入主代理 token 预算。
 
@@ -317,6 +326,7 @@ mcp__slack__post_message channel="#team" text="✅ CH-001 用户登录功能验�
 
 - **阶段内高频更新**（阶段进度、当前任务）：写入 `.specs/<change-id>/STATE.md` 的对应字段
 - **阶段转换**：写入 `.specs/<change-id>/STATE.md` 的当前阶段字段 + 更新 STATE.md 索引表中该 change 的阶段和最后更新列
+- **worktree 追踪**：worktree 创建时，per-change STATE.md 的 `worktree_path` 写入路径值。归档/废弃清理后，`worktree_path` 清为 `无`
 - **启动新 change**：创建 `.specs/<id>/STATE.md` + 在 STATE.md 索引表添加新行
 - **归档**：从 STATE.md 索引表移除该 change 行 + 删除 `.specs/<id>/STATE.md`（归档/废弃流程自身步骤中完成，此处不再重复）
 - **轨迹采集触发**（配置项 `trace_auto_collect` 控制，默认 true）：归档流程步骤 4.5 已在 `special-flows.md` 中定义，此处仅声明配置项引用。设为 false 时跳过轨迹采集

@@ -3,6 +3,7 @@
 ## 活跃 Change
 | change-id | 阶段 | 最后更新 |
 |-----------|------|---------|
+| worktree-isolation | 5-审查 | 2026-05-21 |
 
 ## Pipeline 待续
 - 无
