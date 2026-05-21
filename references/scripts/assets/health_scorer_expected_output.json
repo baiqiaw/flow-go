@@ -1,0 +1,18 @@
+{
+  "scores": {
+    "AC 通过率": 80,
+    "测试覆盖": 100,
+    "评审效率": 100,
+    "代码质量": 90,
+    "边界卫生": 100,
+    "文档完备": 100,
+    "资源效率": 100
+  },
+  "composite": 94.3,
+  "grade": "A",
+  "rag": "Green",
+  "intervention": {
+    "level": "none",
+    "weak_dimensions": []
+  }
+}

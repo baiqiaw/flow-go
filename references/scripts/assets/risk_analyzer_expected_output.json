@@ -1,0 +1,70 @@
+{
+  "summary": {
+    "total": 3,
+    "high": 0,
+    "medium": 2,
+    "low": 1,
+    "avg_score": 4.7,
+    "total_emv": 53000
+  },
+  "recommendation": "中风险为主：建议逐项评估是否需要缓解",
+  "risks": [
+    {
+      "name": "性能不达标",
+      "probability": 2,
+      "impact": 3,
+      "score": 6,
+      "weighted_score": 7.2,
+      "level": "中",
+      "category": "technical",
+      "mitigations": [
+        "技术验证（PoC/Spike）",
+        "准备备选方案"
+      ],
+      "response_strategy": "接受（Accept）",
+      "response_desc": "分数 < 8：监控并准备应急计划",
+      "financial_impact": 50000,
+      "emv": 25000,
+      "probability_pct": 50
+    },
+    {
+      "name": "依赖 X API 稳定性",
+      "probability": 3,
+      "impact": 2,
+      "score": 6,
+      "weighted_score": 6.6,
+      "level": "中",
+      "category": "integration",
+      "mitigations": [
+        "接口契约先行（API Mock）",
+        "集成测试提前覆盖"
+      ],
+      "response_strategy": "接受（Accept）",
+      "response_desc": "分数 < 8：监控并准备应急计划",
+      "financial_impact": 30000,
+      "estimate_expected_days": 5.7,
+      "estimate_std_dev": 1.7,
+      "estimate_confidence_85": 7.5,
+      "emv": 24000,
+      "probability_pct": 80
+    },
+    {
+      "name": "预算超支",
+      "probability": 1,
+      "impact": 2,
+      "score": 2,
+      "weighted_score": 2.8,
+      "level": "低",
+      "category": "financial",
+      "mitigations": [
+        "分阶段预算审批",
+        "预留应急储备"
+      ],
+      "response_strategy": "接受（Accept）",
+      "response_desc": "分数 < 8：监控并准备应急计划",
+      "financial_impact": 20000,
+      "emv": 4000,
+      "probability_pct": 20
+    }
+  ]
+}

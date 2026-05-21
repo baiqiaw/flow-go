@@ -1,0 +1,28 @@
+[
+  {
+    "name": "依赖 X API 稳定性",
+    "probability": "高",
+    "impact": "中",
+    "category": "integration",
+    "financial_impact": 30000,
+    "effort_days": {
+      "optimistic": 2,
+      "likely": 5,
+      "pessimistic": 12
+    }
+  },
+  {
+    "name": "性能不达标",
+    "probability": "中",
+    "impact": "高",
+    "category": "technical",
+    "financial_impact": 50000
+  },
+  {
+    "name": "预算超支",
+    "probability": "低",
+    "impact": "中",
+    "category": "financial",
+    "financial_impact": 20000
+  }
+]

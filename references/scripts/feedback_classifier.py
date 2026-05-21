@@ -198,12 +198,58 @@ def _write_skill_feedback(classified_results, evolution_dir):
     return count
 
 
+def format_text_output(result):
+    """将分类结果格式化为可读文本"""
+    lines = []
+    lines.append("=" * 50)
+    lines.append("用户输入分类报告")
+    lines.append("=" * 50)
+    lines.append("")
+
+    # 统计概览
+    stats = result.get("stats", {})
+    lines.append(f"变更 ID: {result.get('change_id', '')}")
+    lines.append(f"分类时间: {result.get('classified_at', '')}")
+    lines.append(f"总输入数: {result.get('total_inputs', 0)}")
+    lines.append(f"  project:    {stats.get('project', 0)}")
+    lines.append(f"  skill:      {stats.get('skill', 0)}")
+    lines.append(f"  preference: {stats.get('preference', 0)}")
+    lines.append(f"  noise:      {stats.get('noise', 0)}")
+    lines.append("")
+
+    # 分类详情
+    for i, item in enumerate(result.get("results", []), 1):
+        lines.append(f"--- [{i}] {item['category'].upper()} (置信度 {item['confidence']}) ---")
+        lines.append(f"  阶段: {item.get('stage', '')}")
+        lines.append(f"  内容: {item.get('content', '')}")
+        # 关键信号
+        text = item.get("content", "")
+        signals = []
+        for kw in SKILL_KEYWORDS:
+            if kw.lower() in text.lower():
+                signals.append(kw)
+        for kw in PROJECT_KEYWORDS:
+            if kw.lower() in text.lower():
+                signals.append(kw)
+        for kw in PREFERENCE_KEYWORDS:
+            if kw.lower() in text.lower():
+                signals.append(kw)
+        if signals:
+            lines.append(f"  关键信号: {', '.join(signals)}")
+        lines.append("")
+
+    lines.append("=" * 50)
+    return "\n".join(lines)
+
+
 def main():
     parser = argparse.ArgumentParser(description="用户输入分类器")
     parser.add_argument("--specs-dir", required=True, help=".specs/<id> 目录路径")
     parser.add_argument("--output", help="分类结果输出 JSON 路径")
     parser.add_argument("--complexity", choices=["LITE", "STANDARD", "HEAVY"],
                         default="STANDARD", help="复杂度级别（影响分类灵敏度）")
+    parser.add_argument("--format", choices=["text", "json"], default="json",
+                        dest="fmt", help="输出格式（text 或 json）")
     args = parser.parse_args()
 
     results = classify(args.specs_dir, args.complexity)
@@ -243,7 +289,10 @@ def main():
               file=sys.stderr)
 
     if not args.output:
-        print(output_json)
+        if args.fmt == "text":
+            print(format_text_output(output))
+        else:
+            print(output_json)
 
 
 if __name__ == "__main__":

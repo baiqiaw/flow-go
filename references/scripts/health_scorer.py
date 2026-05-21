@@ -50,6 +50,51 @@ EXPECTED_ARTIFACTS = [
     "TASK.md", "SUMMARY.md", "TEST.md",
 ]
 
+# ── RAG 干预优先级体系（借鉴 pm-skills INTERVENTION_THRESHOLDS）──
+INTERVENTION_THRESHOLDS = {
+    "immediate": 30,     # 综合评分 ≤30：立即干预
+    "urgent": 50,        # 综合评分 ≤50：紧急关注
+    "monitor": 70,       # 综合评分 ≤70：持续监控
+}
+
+INTERVENTION_RECOMMENDATIONS = {
+    "ac_coverage": {
+        "monitor": "检查 AC 定义是否清晰，补充遗漏的验收条件",
+        "urgent": "AC 通过率严重不足，回溯需求阶段重新定义 AC",
+        "immediate": "需求与实现严重脱节，建议暂停开发重新对齐",
+    },
+    "test_completeness": {
+        "monitor": "补充跳过的测试轮次，增加边界用例",
+        "urgent": "测试覆盖不足，补充冒烟测试和回归测试",
+        "immediate": "测试严重缺失，发布前必须补齐关键路径测试",
+    },
+    "review_efficiency": {
+        "monitor": "优化评审前自检流程，减少评审轮次",
+        "urgent": "评审反复不通过，检查开发阶段自检步骤",
+        "immediate": "代码质量系统性问题，建议全面重构",
+    },
+    "code_quality": {
+        "monitor": "检查代码风格一致性，清理技术债务",
+        "urgent": "代码质量问题频发，增加 lint 和格式化工具",
+        "immediate": "幻觉标记过多，检查 AI 输出质量并人工审查",
+    },
+    "boundary_hygiene": {
+        "monitor": "注意角色边界，检查是否跨任务改动",
+        "urgent": "边界违反频繁，强化角色红线提醒",
+        "immediate": "严重越权行为，停止并重新审视任务划分",
+    },
+    "doc_completeness": {
+        "monitor": "补齐缺失工件，完善文档",
+        "urgent": "关键工件缺失，补充 DESIGN.md 或 TEST.md",
+        "immediate": "文档严重不足，无法支撑后续阶段",
+    },
+    "token_efficiency": {
+        "monitor": "优化代码量与 AC 产出比，减少冗余改动",
+        "urgent": "效率偏低，检查是否存在过度工程",
+        "immediate": "大量代码改动但 AC 通过极少，重新评估方案",
+    },
+}
+
 
 def score_ac_coverage(data):
     total = data.get("ac_total", 0)
@@ -181,11 +226,39 @@ def compute(data):
     else:
         rag = "Red"
 
+    # 干预优先级判定
+    intervention_level = "none"
+    for level, threshold in [("immediate", INTERVENTION_THRESHOLDS["immediate"]),
+                              ("urgent", INTERVENTION_THRESHOLDS["urgent"]),
+                              ("monitor", INTERVENTION_THRESHOLDS["monitor"])]:
+        if composite <= threshold:
+            intervention_level = level
+            break
+
+    # 维度级建议：找出低于 60 的维度，按差距排序
+    weak_dimensions = []
+    for dim_key, score in scores.items():
+        if score < 60:
+            level = "immediate" if score < 30 else ("urgent" if score < 50 else "monitor")
+            rec = INTERVENTION_RECOMMENDATIONS.get(dim_key, {}).get(level, "")
+            weak_dimensions.append({
+                "dimension": DIMENSIONS[dim_key]["label"],
+                "key": dim_key,
+                "score": score,
+                "level": level,
+                "recommendation": rec,
+            })
+    weak_dimensions.sort(key=lambda x: x["score"])
+
     return {
         "scores": {DIMENSIONS[dim]["label"]: scores[dim] for dim in DIMENSIONS},
         "composite": composite,
         "grade": grade,
         "rag": rag,
+        "intervention": {
+            "level": intervention_level,
+            "weak_dimensions": weak_dimensions,
+        },
     }
 
 
@@ -199,6 +272,22 @@ def format_markdown(report):
         w = next(d["weight"] for d in DIMENSIONS.values() if d["label"] == dim)
         lines.append(f"| {dim} | {score} | {int(w * 100)}% |")
     lines.append(f"\n**RAG 判定**：综合 ≥ 80 且最低维度 ≥ 60 → 🟢 Green；综合 ≥ 60 且最低维度 ≥ 40 → 🟡 Amber；其余 → 🔴 Red")
+
+    # 干预建议（借鉴 pm-skills RAG 干预体系）
+    intervention = report.get("intervention", {})
+    level = intervention.get("level", "none")
+    weak = intervention.get("weak_dimensions", [])
+    if level != "none" or weak:
+        level_icons = {"immediate": "🚨", "urgent": "⚠️", "monitor": "📋", "none": "✅"}
+        lines.append(f"\n### 干预优先级：{level_icons.get(level, '')} {level.upper()}\n")
+        if weak:
+            lines.append("| 薄弱维度 | 分数 | 级别 | 建议 |")
+            lines.append("|----------|------|------|------|")
+            for wd in weak:
+                lines.append(f"| {wd['dimension']} | {wd['score']} | {wd['level']} | {wd['recommendation']} |")
+        else:
+            lines.append("综合评分正常，无薄弱维度（所有维度 ≥ 60）。")
+
     return "\n".join(lines)
 
 

@@ -7,6 +7,7 @@
 
 用法：
     python3 evolution_signal.py --specs-dir .specs/<change-id>
+    python3 evolution_signal.py --specs-dir .specs/<change-id> --format text
     python3 evolution_signal.py --specs-dir .specs/<change-id> --traces .specs/traces.jsonl
     python3 evolution_signal.py --specs-dir .specs/<change-id> --output .specs/evolution/<change-id>-signals.json
 """
@@ -359,22 +360,91 @@ def detect(specs_dir, traces_path=None):
     }
 
 
+def format_text_output(result):
+    """将信号检测结果格式化为可读的文本报告"""
+    lines = []
+    lines.append("=" * 60)
+    lines.append("进化信号检测报告")
+    lines.append("=" * 60)
+    lines.append("")
+
+    # Change ID 和日期
+    lines.append(f"Change ID : {result.get('change_id', 'N/A')}")
+    lines.append(f"日期       : {result.get('date', 'N/A')}")
+    lines.append("")
+
+    # 强信号
+    strong = result.get("strong_signals", [])
+    strong_count = result.get("strong_count", len(strong))
+    lines.append(f"── 强信号 ({strong_count}) ──")
+    if strong:
+        for i, sig in enumerate(strong, 1):
+            lines.append(f"  [{i}] 类型: {sig.get('type', '')}")
+            lines.append(f"      描述: {sig.get('description', '')}")
+            for ev in sig.get("evidence", []):
+                lines.append(f"      证据: {ev}")
+            lines.append(f"      归因: {sig.get('attribution', '')}")
+            lines.append("")
+    else:
+        lines.append("  (无)")
+        lines.append("")
+
+    # 中信号
+    medium = result.get("medium_signals", [])
+    medium_count = result.get("medium_count", len(medium))
+    lines.append(f"── 中信号 ({medium_count}) ──")
+    if medium:
+        for i, sig in enumerate(medium, 1):
+            lines.append(f"  [{i}] 类型: {sig.get('type', '')}")
+            lines.append(f"      描述: {sig.get('description', '')}")
+            for ev in sig.get("evidence", []):
+                lines.append(f"      证据: {ev}")
+            lines.append(f"      归因: {sig.get('attribution', '')}")
+            lines.append("")
+    else:
+        lines.append("  (无)")
+        lines.append("")
+
+    # 闸门判定
+    gate = result.get("gate_passed", False)
+    gate_label = "是" if gate else "否"
+    lines.append(f"── 是否值得反思: {gate_label} ──")
+    lines.append("")
+
+    # 归因摘要
+    attr_summary = result.get("attribution_summary", {})
+    lines.append("── 归因摘要 ──")
+    if attr_summary:
+        for tag, count in attr_summary.items():
+            lines.append(f"  {tag}: {count} 次")
+    else:
+        lines.append("  (无)")
+    lines.append("")
+
+    return "\n".join(lines)
+
+
 def main():
     parser = argparse.ArgumentParser(description="进化信号检测器")
     parser.add_argument("--specs-dir", required=True, help=".specs/<change-id> 目录路径")
     parser.add_argument("--traces", help="traces.jsonl 路径（可选，启用 trace 信号提取）")
-    parser.add_argument("--output", help="输出 JSON 路径（默认 stdout）")
+    parser.add_argument("--output", help="输出路径（默认 stdout）")
+    parser.add_argument("--format", choices=["text", "json"], default="json",
+                        dest="fmt", help="输出格式（默认 json）")
     parser.add_argument("--write-lessons", action="store_true",
                         help="将 strong_signals 写入 LESSONS.md（AC-6）")
     args = parser.parse_args()
 
     result = detect(args.specs_dir, traces_path=args.traces)
 
-    output = json.dumps(result, ensure_ascii=False, indent=2)
+    if args.fmt == "text":
+        output = format_text_output(result)
+    else:
+        output = json.dumps(result, ensure_ascii=False, indent=2)
 
     if args.output:
         Path(args.output).parent.mkdir(parents=True, exist_ok=True)
-        tmp = Path(args.output).with_suffix(".json.tmp")
+        tmp = Path(args.output).with_suffix(".tmp")
         tmp.write_text(output, encoding="utf-8")
         os.replace(tmp, Path(args.output))
         print(f"信号已保存到 {args.output}", file=sys.stderr)

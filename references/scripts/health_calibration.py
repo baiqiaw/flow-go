@@ -46,6 +46,8 @@ def parse_args():
     )
     parser.add_argument("--specs-dir", required=True, help="项目 spec 根目录（必选）")
     parser.add_argument("--min-samples", type=int, default=5, help="最小样本数（可选，默认 5）")
+    parser.add_argument("--format", choices=["text", "json"], default="json", dest="output_format",
+                        help="输出格式（可选，默认 json）")
     return parser.parse_args()
 
 
@@ -88,6 +90,54 @@ def spearman_rho(x, y):
     return 1.0 - (6.0 * d_sq) / (n * (n * n - 1))
 
 
+def format_text_output(report):
+    """将校准报告格式化为可读文本"""
+    lines = []
+    lines.append("=" * 60)
+    lines.append("健康评分校准报告")
+    lines.append("=" * 60)
+    lines.append("")
+
+    # 概况
+    lines.append(f"样本数量: {report['sample_size']}")
+    lines.append("结果分布:")
+    for outcome, count in report["outcome_distribution"].items():
+        lines.append(f"  {outcome}: {count}")
+    lines.append("")
+
+    # 相关性分析
+    lines.append("-" * 40)
+    lines.append("维度相关性分析")
+    lines.append("-" * 40)
+    for dim, info in report["correlations"].items():
+        rho = info["correlation"]
+        direction = "正相关" if rho > 0 else ("负相关" if rho < 0 else "无相关")
+        lines.append(f"  {dim}:")
+        lines.append(f"    Spearman r = {rho}（{direction}）")
+        lines.append(f"    当前权重: {info['current_weight']}  建议权重: {info['suggested_weight']}")
+    lines.append("")
+
+    # 权重调整建议
+    if report["suggestions"]:
+        lines.append("-" * 40)
+        lines.append("权重调整建议")
+        lines.append("-" * 40)
+        for i, s in enumerate(report["suggestions"], 1):
+            lines.append(f"  {i}. {s}")
+    lines.append("")
+
+    # 汇总
+    lines.append("=" * 60)
+    lines.append("汇总")
+    lines.append("=" * 60)
+    total = len(report["correlations"])
+    high_corr = sum(1 for v in report["correlations"].values() if v["correlation"] > 0.3)
+    lines.append(f"  共分析 {total} 个维度，其中 {high_corr} 个与结果中高度相关")
+    lines.append("")
+
+    return "\n".join(lines)
+
+
 def main():
     args = parse_args()
 
@@ -102,7 +152,11 @@ def main():
     if len(with_outcome) < args.min_samples:
         print(f"警告：有 outcome 的样本不足（{len(with_outcome)} < {args.min_samples}）", file=sys.stderr)
         if not with_outcome:
-            print(json.dumps({"sample_size": 0, "outcome_distribution": {}, "correlations": {}, "suggestions": ["样本不足，无法计算校准建议"]}, ensure_ascii=False, indent=2))
+            fallback = {"sample_size": 0, "outcome_distribution": {}, "correlations": {}, "suggestions": ["样本不足，无法计算校准建议"]}
+            if args.output_format == "text":
+                print(format_text_output(fallback))
+            else:
+                print(json.dumps(fallback, ensure_ascii=False, indent=2))
             sys.exit(2)
 
     outcome_dist = {}
@@ -149,7 +203,10 @@ def main():
         "suggestions": suggestions,
     }
 
-    print(json.dumps(report, ensure_ascii=False, indent=2))
+    if args.output_format == "text":
+        print(format_text_output(report))
+    else:
+        print(json.dumps(report, ensure_ascii=False, indent=2))
 
     if len(with_outcome) < args.min_samples:
         sys.exit(2)

@@ -1,0 +1,17 @@
+{
+  "ac_total": 5,
+  "ac_passed": 4,
+  "test_rounds_completed": 3,
+  "test_rounds_skipped": 0,
+  "review_rounds": 1,
+  "code_lines_added": 150,
+  "code_lines_removed": 30,
+  "files_changed": 4,
+  "boundary_violations": 0,
+  "hallucination_flags": 0,
+  "artifacts_complete": [
+    "CHANGE.md", "REQUIREMENT.md", "DESIGN.md",
+    "TASK.md", "SUMMARY.md", "TEST.md"
+  ],
+  "change_id": "CH-20260521-sample"
+}

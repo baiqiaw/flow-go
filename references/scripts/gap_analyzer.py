@@ -41,6 +41,8 @@ def parse_args():
     parser.add_argument("--specs-dir", required=True, help="项目 spec 根目录（必选）")
     parser.add_argument("--min-samples", type=int, default=3, help="最小样本数（可选，默认 3）")
     parser.add_argument("--threshold", type=float, default=1.5, help="偏差阈值（可选，默认 1.5 分）")
+    parser.add_argument("--format", choices=["text", "json"], default="json", dest="output_format",
+                        help="输出格式（可选，默认 json）")
     return parser.parse_args()
 
 
@@ -146,6 +148,38 @@ def attach_lessons(weak_slices, lessons):
         ws["related_lessons"] = related[:5]
 
 
+def format_text_output(report):
+    """将分析报告格式化为可读的文本输出"""
+    lines = []
+    lines.append("=" * 60)
+    lines.append("GAP 分析报告")
+    lines.append("=" * 60)
+
+    overall = report.get("overall_avg_score")
+    lines.append(f"\n总轨迹数: {report.get('total_traces', 0)}")
+    lines.append(f"整体平均评分: {overall if overall is not None else 'N/A'}")
+
+    weak = report.get("weak_slices", [])
+    if weak:
+        lines.append(f"\n薄弱分片 ({len(weak)} 个):")
+        lines.append("-" * 60)
+        lines.append(f"{'维度':<16} {'值':<12} {'均分':>5} {'偏差':>6}  {'建议'}")
+        lines.append("-" * 60)
+        for ws in weak:
+            lines.append(
+                f"{ws['dimension']:<16} {ws['value']:<12} {ws['avg_score']:>5} {ws['deviation']:>+6.1f}  {ws['suggestion']}"
+            )
+            related = ws.get("related_lessons", [])
+            if related:
+                for rl in related:
+                    lines.append(f"{'':>16} 关联经验: {rl}")
+    else:
+        lines.append("\n无薄弱分片（各维度均在阈值范围内）。")
+
+    lines.append("=" * 60)
+    return "\n".join(lines)
+
+
 def main():
     args = parse_args()
 
@@ -170,7 +204,10 @@ def main():
         "weak_slices": weak_slices,
     }
 
-    print(json.dumps(report, ensure_ascii=False, indent=2))
+    if args.output_format == "text":
+        print(format_text_output(report))
+    else:
+        print(json.dumps(report, ensure_ascii=False, indent=2))
 
     if len(traces) < args.min_samples:
         sys.exit(2)

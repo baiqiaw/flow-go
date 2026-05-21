@@ -81,7 +81,7 @@ description: >
 | `test_depth` | standard | 4-测试阶段默认深度（smoke / standard / deep） |
 | `max_files_per_task` | 10 | 3-开发阶段单任务改动文件上限 |
 | `auto_sync` | true | 决策信号自动触发知识库受作用域同步 |
-| `priority_framework` | MoSCoW | 2-任务阶段默认优先级框架 |
+| `priority_framework` | MoSCoW | 2-任务阶段默认优先级框架（auto=按决策树自动选择，MoSCoW/WSJF/RICE/ICE/MCDA=强制指定） |
 | `explain_level` | default | 解释详细度（default / terse） |
 | `evolution_mode` | auto | 进化分析模式（auto=自动触发 / off=关闭） |
 | `complexity_threshold` | 5 | blast-radius 文件数阈值 |
@@ -102,7 +102,7 @@ test_rounds: 3
 test_depth: standard
 max_files_per_task: 10
 auto_sync: true
-priority_framework: MoSCoW
+priority_framework: MoSCoW  # 或 auto / WSJF / RICE / ICE / MCDA
 explain_level: default
 preflight_check: true
 context_budget_mode: auto

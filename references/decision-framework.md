@@ -66,6 +66,62 @@
 
 ---
 
+## 优先级模型选择树
+
+> 项目经理在 2-任务阶段排序时使用。当 `priority_framework: auto` 时，按以下决策逻辑自动选择模型。
+
+### 决策逻辑
+
+```
+if change_type == "bugfix":
+    → MoSCoW（快速分 Must/Should，bugfix 需求明确）
+
+elif resource_constrained and cost_of_delay_quantifiable:
+    → WSJF（加权最短作业优先，适合资源受限的敏捷项目）
+
+elif change_type == "feature" and reach_metrics_available:
+    → RICE（Reach × Impact × Confidence / Effort，适合面向用户的功能）
+
+elif quick_prioritization_needed or ideation_phase:
+    → ICE（Impact + Confidence + Ease，快速粗排）
+
+elif multiple_stakeholder_groups:
+    → MoSCoW（多利益方场景，MoSCoW 分类最直观）
+
+elif complex_tradeoffs_across_incommensurable_criteria:
+    → Multi-Criteria Decision Analysis (MCDA)
+
+else:
+    → MoSCoW（默认兜底）
+```
+
+### 模型速查
+
+| 模型 | 适用场景 | 公式 | 输入要求 |
+|------|----------|------|----------|
+| **MoSCoW** | 通用，多利益方 | Must/Should/Could/Won't | 每条 AC/Task 的优先级标签 |
+| **WSJF** | 资源受限 + 敏捷 | (用户价值 + 时间紧迫 + 风险降低) / 作业规模 | 4 项量化评分 |
+| **RICE** | 面向用户功能 | (Reach × Impact × Confidence%) / Effort | Reach/Impact/Confidence/Effort |
+| **ICE** | 快速粗排/头脑风暴 | (Impact + Confidence + Ease) / 3 | 3 项快速评分 |
+| **MCDA** | 多维度不可比标准 | 加权评分矩阵 | 维度 + 权重 + 每项评分 |
+
+### 配置项
+
+`.flowgo-config` 中 `priority_framework` 支持以下值：
+- `auto`（推荐）：按决策逻辑自动选择
+- `MoSCoW` / `WSJF` / `RICE` / `ICE` / `MCDA`：强制指定
+- 默认值：`MoSCoW`
+
+### 使用方式
+
+当 `priority_framework: auto` 时，2-任务阶段的项目经理执行：
+1. 读取 CHANGE.md 的 `change_type`（bugfix/feature/refactor/其他）
+2. 按决策逻辑选择模型
+3. 在 TASK.md 中声明使用的模型及选择理由
+4. 按选定模型计算优先级并排序
+
+---
+
 ## 使用方式
 
 阶段执行中遇到上述场景时，grep 本文件对应角色章节，匹配后执行对应动作。未匹配 → 按角色红线执行默认行为（不越权）。

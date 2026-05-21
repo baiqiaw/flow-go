@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """苦丸审计 — 扫描 flow-go skill 规则文本，分类 KEEP/REVIEW/CANDIDATE
 
-用法：python3 bitter_pill_audit.py --skill-dir <path> [--output <path>]
+用法：python3 bitter_pill_audit.py --skill-dir <path> [--output <path>] [--format text|json]
 
 分类标准：
   KEEP: 角色红线、工件完整性、安全检查、数据一致性、跨角色协调
@@ -168,10 +168,45 @@ def format_markdown(results):
     return "\n".join(lines)
 
 
+def format_text(results):
+    """格式化为可读的纯文本报告"""
+    keep = [r for r in results if r["category"] == "KEEP"]
+    review = [r for r in results if r["category"] == "REVIEW"]
+    candidate = [r for r in results if r["category"] == "CANDIDATE"]
+
+    lines = []
+    lines.append("=" * 60)
+    lines.append("苦丸审计报告")
+    lines.append("=" * 60)
+    lines.append("")
+    lines.append(f"KEEP     : {len(keep)}")
+    lines.append(f"REVIEW   : {len(review)}")
+    lines.append(f"CANDIDATE: {len(candidate)}")
+    lines.append(f"总计     : {len(results)}")
+    lines.append("")
+
+    for category_name, group in [("KEEP", keep), ("REVIEW", review), ("CANDIDATE", candidate)]:
+        if not group:
+            continue
+        lines.append("-" * 60)
+        lines.append(f"{category_name} ({len(group)} 条)")
+        lines.append("-" * 60)
+        for i, r in enumerate(group, 1):
+            source = os.path.relpath(r["source"])
+            lines.append(f"  [{i}] {r['text']}")
+            lines.append(f"      来源: {source}")
+            lines.append(f"      理由: {r['reason']}")
+        lines.append("")
+
+    return "\n".join(lines)
+
+
 def main():
     parser = argparse.ArgumentParser(description="flow-go 苦丸审计")
     parser.add_argument("--skill-dir", required=True, help="flow-go skill 根目录")
     parser.add_argument("--output", help="输出路径（默认 stdout）")
+    parser.add_argument("--format", choices=["text", "json", "markdown"], default="markdown",
+                        help="输出格式：text（可读报告）或 json（结构化数据），默认 json")
     args = parser.parse_args()
 
     files = scan_skill_dir(args.skill_dir)
@@ -194,13 +229,19 @@ def main():
                 "reason": reason,
             })
 
-    report = format_markdown(all_results)
+    if args.format == "json":
+        output = json.dumps(all_results, ensure_ascii=False, indent=2)
+    elif args.format == "text":
+        output = format_text(all_results)
+    else:
+        # markdown（向后兼容）
+        output = format_markdown(all_results)
 
     if args.output:
         with open(args.output, "w", encoding="utf-8") as f:
-            f.write(report)
+            f.write(output)
     else:
-        print(report)
+        print(output)
 
 
 if __name__ == "__main__":
