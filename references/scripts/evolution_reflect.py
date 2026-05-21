@@ -27,6 +27,7 @@ RISK_RULES = {
     "add_lesson": "low",
     "modify_script": "high",
     "modify_review_checklist": "low",
+    "suggest_improvement": "medium",
 }
 
 # 顿悟触发阈值：同一 signature 出现此次数后生成持久洞察
@@ -607,11 +608,148 @@ def capture(specs_dir, health_score, output_path=None, strategies_path=None):
     return result
 
 
+# ── SUGGEST 模式（用户反馈驱动的改进建议）───────────────────
+
+def _jaccard_similarity(text_a, text_b):
+    """计算两个文本的 Jaccard 相似度（基于字符级 unigram）"""
+    set_a = set(text_a.lower())
+    set_b = set(text_b.lower())
+    if not set_a or not set_b:
+        return 0.0
+    return len(set_a & set_b) / len(set_a | set_b)
+
+
+def _cluster_feedback(feedback_records, threshold=0.4):
+    """按内容相似度聚类 skill 反馈（极简 Jaccard 聚类）"""
+    clusters = []
+    for record in feedback_records:
+        content = record.get("content", "")
+        merged = False
+        for cluster in clusters:
+            rep = cluster[0].get("content", "")
+            if _jaccard_similarity(content, rep) >= threshold:
+                cluster.append(record)
+                merged = True
+                break
+        if not merged:
+            clusters.append([record])
+    return clusters
+
+
+def _generate_suggestion_hypothesis(cluster, change_id):
+    """从一个反馈聚类生成改进假设"""
+    contents = [r.get("content", "") for r in cluster]
+    representative = contents[0][:150]
+    frequency = len(cluster)
+    stages = list(set(r.get("stage", "") for r in cluster))
+
+    confidence = min(0.5 + frequency * 0.1, 0.9)
+    risk = RISK_RULES.get("suggest_improvement", "medium")
+
+    hypothesis = {
+        "id": f"H{datetime.now().strftime('%Y%m%d')}{hash(representative) % 1000:03d}",
+        "created_at": datetime.now().isoformat(timespec="seconds"),
+        "origin": "SUGGEST",
+        "parent_hypothesis_id": None,
+        "signal_refs": ["user_suggestion"],
+        "signal_evidence": contents[:5],
+        "root_cause": f"用户在 {', '.join(stages)} 阶段反馈：{representative[:80]}",
+        "action_type": "suggest_improvement",
+        "target_file": "SKILL.md / references/（用户确认后手动修改）",
+        "confidence": round(confidence, 2),
+        "risk": risk,
+        "reasoning": f"来自 {frequency} 条相似用户反馈，代表真实使用痛点",
+        "auto_approve_eligible": False,  # SUGGEST 路径不自动写入
+        "proposed_change": (
+            f"[suggest] {representative[:100]}\n"
+            f"  frequency: {frequency}\n"
+            f"  stages: {', '.join(stages)}"
+        ),
+        "signature": f"suggest_improvement-user_suggestion",
+        "status": "pending",
+    }
+
+    # 一次性洞察：只有 1 条反馈但置信度较高时
+    insight = None
+    if frequency == 1 and confidence >= 0.8:
+        insight = {
+            "id": f"INS-{datetime.now().strftime('%Y%m%d')}-oneshot",
+            "signature": hypothesis["signature"],
+            "source_hypothesis_ids": [hypothesis["id"]],
+            "trigger_count": 1,
+            "root_cause": hypothesis["root_cause"],
+            "advice": hypothesis["proposed_change"],
+            "one_shot": True,
+            "status": "pending_approval",
+            "generated_at": datetime.now().isoformat(timespec="seconds"),
+        }
+
+    return hypothesis, insight
+
+
+def suggest(feedback_path, history_path=None, output_path=None):
+    """SUGGEST 模式：从 skill-feedback.jsonl 生成改进假设"""
+    feedback_path = Path(feedback_path)
+    if not feedback_path.is_file():
+        return {"suggested": False, "reason": "skill-feedback.jsonl 不存在"}
+
+    # 读取未处理的反馈
+    records = []
+    for line in feedback_path.read_text(encoding="utf-8").strip().split("\n"):
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            record = json.loads(line)
+            if not record.get("processed", False):
+                records.append(record)
+        except json.JSONDecodeError:
+            continue
+
+    if not records:
+        return {"suggested": False, "reason": "无未处理的 skill 反馈"}
+
+    # 聚类
+    clusters = _cluster_feedback(records)
+    change_ids = list(set(r.get("change_id", "") for r in records))
+
+    # 生成假设和洞察
+    hypotheses = []
+    insights = []
+    for cluster in clusters:
+        hyp, ins = _generate_suggestion_hypothesis(
+            cluster, change_ids[0] if change_ids else ""
+        )
+        hypotheses.append(hyp)
+        if ins:
+            insights.append(ins)
+
+    result = {
+        "mode": "suggest",
+        "processed_feedback_count": len(records),
+        "cluster_count": len(clusters),
+        "hypothesis_count": len(hypotheses),
+        "insight_count": len(insights),
+        "change_ids": change_ids,
+        "hypotheses": hypotheses,
+        "insights": insights,
+        "created_at": datetime.now().isoformat(timespec="seconds"),
+    }
+
+    if output_path:
+        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+        Path(output_path).write_text(
+            json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+
+    return result
+
+
 # ── CLI 入口 ─────────────────────────────────────────────
 
 def main():
     parser = argparse.ArgumentParser(description="进化反思器 + 策略捕获")
-    parser.add_argument("--mode", choices=["reflect", "capture"], default="reflect",
+    parser.add_argument("--mode", choices=["reflect", "capture", "suggest"], default="reflect",
                         help="运行模式（默认 reflect）")
     parser.add_argument("--output", help="输出 JSON 路径（默认 stdout）")
     # reflect 模式
@@ -621,7 +759,19 @@ def main():
     parser.add_argument("--specs-dir", help=".specs/<change-id> 目录路径（capture 模式）")
     parser.add_argument("--health-score", type=float, help="健康评分（capture 模式）")
     parser.add_argument("--strategies", default=None, help="策略库 JSONL 路径")
+    # suggest 模式
+    parser.add_argument("--feedback", default=None, help="skill-feedback.jsonl 路径（suggest 模式）")
     args = parser.parse_args()
+
+    if args.mode == "suggest":
+        if not args.feedback:
+            parser.error("suggest 模式需要 --feedback")
+        result = suggest(args.feedback, history_path=args.history, output_path=args.output)
+        if not args.output:
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+        else:
+            print(f"SUGGEST 假设已保存到 {args.output}", file=sys.stderr)
+        return
 
     if args.mode == "capture":
         if not args.specs_dir or not args.health_score:

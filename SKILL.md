@@ -38,6 +38,26 @@ description: >
 
 ---
 
+## 前置动作 · 用户输入记录
+
+**在执行任何步骤之前，先将当前用户输入追加到 `.specs/<id>/user-inputs.jsonl`**。
+
+这是每轮对话的初始动作（横切关注点），不是编号步骤。类似于角色红线，贯穿所有阶段。
+
+- 仅在 STATE.md 有活跃 Change 时执行（无活跃 Change 时跳过）
+- 格式（每行一个 JSON 对象，append-only）：
+  ```json
+  {"ts":"2026-05-21T14:30:00","change_id":"xxx","stage":"3-开发","input":"用户原始输入"}
+  ```
+- `change_id`：从 STATE.md `活跃 Change` 字段读取
+- `stage`：从 STATE.md `当前阶段` 字段读取
+- `input`：用户消息原文（保留原文，不做加工）
+- `.specs/<id>/` 目录已存在（有活跃 Change 时），直接追加
+- 每条用户消息只追加一次
+- 此数据用于验收阶段的反馈分类和 SUGGEST 进化路径，详见 `references/scripts/feedback_classifier.py`
+
+---
+
 ## 第一步 · 读状态
 
 1. 尝试读项目根目录 `STATE.md`。不存在 → 新项目，跳过
@@ -73,6 +93,7 @@ description: >
 | `flywheel_outcome_days` | 7 | outcome 自动检测窗口（天） |
 | `context_summarize` | false | 是否默认启用上下文摘要（false=全文加载，true=摘要加载） |
 | `trace_auto_collect` | true | 归档时是否自动采集轨迹 |
+| `user_input_capture` | true | 是否记录用户输入到 user-inputs.jsonl |
 
 **配置格式**（YAML，每行一个键值对）：
 ```yaml
@@ -89,6 +110,7 @@ flywheel_outcome_check: true
 flywheel_outcome_days: 7
 context_summarize: false
 trace_auto_collect: true
+user_input_capture: true
 ```
 
 ## 第三步 · 意图路由
@@ -299,6 +321,16 @@ mcp__slack__post_message channel="#team" text="✅ CH-001 用户登录功能验�
   - FIX 触发时 → 输出「🧬 进化信号已触发：{原因}，正在运行进化分析」→ 执行 `evolution_signal.py` → `evolution_reflect.py --mode reflect` → 展示假设和归因摘要
   - 有顿悟时 → 额外输出「💡 顿悟：{root_cause}（已出现 N 次）→ 建议：{advice}」，请用户确认是否写入 LESSONS.md
   - **BITTER PILL 路径**（规则自审计）：归档后自动执行 `python3 references/scripts/bitter_pill_audit.py --skill-dir <flow-go skill 目录> --output .specs/<id>/BITTER-PILL.md` → 产出 KEEP/REVIEW/CANDIDATE 审计报告 → CANDIDATE 项需用户逐条确认 → 输出「💊 苦丸审计完成：KEEP N / REVIEW N / CANDIDATE N」
+  - **SUGGEST 路径**（改进建议，归档后触发，与 CAPTURE/FIX 同级）：
+    - 触发条件：`.specs/evolution/skill-feedback.jsonl` 存在且含 `processed=false` 的条目
+    - 路径行为：
+      1. 读取未处理的 skill 反馈，按频率排序
+      2. 运行 `evolution_reflect.py --mode suggest --feedback .specs/evolution/skill-feedback.jsonl --output .specs/evolution/<id>-suggestions.json`
+      3. 生成改进假设报告
+      4. 展示假设摘要，请用户逐条确认
+      5. 用户确认的改进 → 记录到建议列表，由用户手动执行修改
+      6. 全部处理完成后，将 skill-feedback.jsonl 中的对应条目标记为 `processed=true`
+    - **安全原则**：SUGGEST 路径不自动修改 SKILL.md 或 references/ 下的任何文件
 - **飞轮巡检**（手动触发：`飞轮巡检` / `飞轮报告` / `周报`；周期触发：`/loop 7d "运行 flow-go 飞轮巡检"`）：
   1. 运行 `gap_analyzer.py` → 输出 Gap 报告
   2. 运行 `health_calibration.py` → 输出校准报告（样本 ≥ `flywheel_min_samples` 时）

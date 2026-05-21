@@ -68,6 +68,7 @@
    - 未到 7-验收 → 创建 ARCHIVE.md（见 `artifacts/spec-artifacts.md`）
 4.5. 轨迹采集：执行 `python3 references/scripts/trace_collector.py --specs-dir .specs/<id> --change-id <id>`，生成 `.specs/<id>/TRACE.md` 和追加 `.specs/traces.jsonl`。采集失败不阻塞归档（输出警告继续执行）
 4.6. **进化信号自动写入 LESSONS**（AC-6）：执行 `python3 references/scripts/evolution_signal.py --specs-dir .specs/<id> --write-lessons`，将 strong_signals 格式化写入 `.specs/LESSONS.md` 的"待改进领域"章节。无 strong_signals 时输出提示并跳过
+4.6b. **热修反馈分析**（可选）：如 `.specs/<id>/user-inputs.jsonl` 存在且行数 > 5 → 运行 `python3 references/scripts/feedback_classifier.py --specs-dir .specs/<id> --complexity LITE`。有 skill 反馈 → 追加到 `.specs/evolution/skill-feedback.jsonl`，输出「🔥 热修反馈已捕获：skill N 条」。行数 ≤ 5 时跳过
 5. LESSONS 提名：扫已有 SUMMARY 和 PROGRESS，符合提名条件的入库
 6. 临时文件清理：删除 spec 目录下所有 `*-PROGRESS.md`
    > ⚠️ 步骤 7-9 必须严格按顺序执行，不允许跳步。STATE.md 清空（步骤 9）必须在目录移动（步骤 7）和索引更新（步骤 8）完成后才执行。
@@ -177,8 +178,8 @@
    - 都没有 → 列出 `.specs/` 下所有非 archive 目录，让用户选
 2. 废弃影响评估：列出已到达阶段 + 代码提交状态 + 并行依赖
 3. 写 ABANDONED.md（见 `artifacts/deploy-artifacts.md`）
-4. 临时文件清理：删除所有 `*-PROGRESS.md`
-5. 移动归档：`.specs/<id>/` → `.specs/archive/abandoned/<date>-<id>/`
+4. 临时文件清理：删除所有 `*-PROGRESS.md`。user-inputs.jsonl 不删除，随目录移动到归档
+5. 移动归档：`.specs/<id>/` → `.specs/archive/abandoned/<date>-<id>/`（含 user-inputs.jsonl）
 6. 更新归档索引
 7. STATE.md 清理（如废弃的是活跃 Change → 清空全部字段）
 8. LESSONS 提名（从 PROGRESS 中提取已排除方案）

@@ -77,7 +77,33 @@
 
 ---
 
-## PIPELINE.md（.specs/PIPELINE.md，跨变更，拆分时创建）
+## user-inputs.jsonl（.specs/<id>/user-inputs.jsonl，per-change）
+
+每轮对话中用户输入的实时记录。由 SKILL.md 前置动作自动追加，归档时随 `.specs/<id>/` 目录移动。
+
+### 格式（每行一个 JSON）
+
+```json
+{"ts":"2026-05-21T14:30:00","change_id":"xxx","stage":"3-开发","input":"用户原始输入"}
+```
+
+### 字段说明
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| ts | string | 是 | ISO8601 时间戳 |
+| change_id | string | 是 | 当前活跃 Change-ID（从 STATE.md 读取） |
+| stage | string | 是 | 当前阶段（如 `3-开发`，从 STATE.md 读取） |
+| input | string | 是 | 用户消息原文，不做加工 |
+
+### 生命周期
+
+- **创建**：每次 flow-go 收到用户输入且有活跃 Change 时追加
+- **使用**：验收阶段由 `feedback_classifier.py` 读取分类
+- **归档**：随 `.specs/<id>/` 目录一起移动到 `.specs/archive/`
+- **不跨 change 累积**：每个 change 有独立的 user-inputs.jsonl
+
+---
 
 ### 模板
 
@@ -309,6 +335,37 @@
 - 上限 100 分
 
 **策略复用**：3-开发阶段 grep strategies.jsonl，按 task_type 匹配取 score 最高的 1-2 条参考
+
+### 文件分类（持久 vs per-change）
+
+| 文件 | 生命周期 | 说明 |
+|------|---------|------|
+| strategies.jsonl | 跨变更持久 | 成功策略库，归档时不移动 |
+| skill-feedback.jsonl | 跨变更持久 | skill 层用户反馈，归档时不移动 |
+| <change-id>-signals.json | per-change | 归档时可选保存 |
+| <change-id>-hypotheses.json | per-change | 归档时可选保存 |
+| <change-id>-capture.json | per-change | 归档时可选保存 |
+| <change-id>-classified-feedback.json | per-change | 验收时分类结果 |
+| <change-id>-suggestions.json | per-change | SUGGEST 进化假设报告 |
+
+## skill-feedback.jsonl（跨变更持久）
+
+用户在使用 flow-go 过程中提出的 skill 层反馈。由 `feedback_classifier.py` 在验收阶段或热修归档时写入。
+
+```json
+{"change_id":"xxx","content":"用户反馈内容","confidence":0.8,"stage":"3-开发","ts":"2026-05-21T14:30:00","classified_at":"2026-05-21T15:00:00","processed":false}
+```
+
+**字段说明**：
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| change_id | string | 关联的 Change-ID |
+| content | string | 反馈原文（截断 200 字） |
+| confidence | float | 分类置信度（0-1） |
+| stage | string | 反馈发生时的阶段 |
+| ts | string | 用户输入时间戳 |
+| classified_at | string | 分类时间戳 |
+| processed | boolean | 是否已被 SUGGEST 路径处理 |
 
 ---
 
