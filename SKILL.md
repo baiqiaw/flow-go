@@ -44,13 +44,13 @@ description: >
 
 这是每轮对话的初始动作（横切关注点），不是编号步骤。类似于角色红线，贯穿所有阶段。
 
-- 仅在 STATE.md 有活跃 Change 时执行（无活跃 Change 时跳过）
+- 仅在 STATE.md 有活跃 Change（索引表非空）时执行（无活跃 Change 时跳过）
 - 格式（每行一个 JSON 对象，append-only）：
   ```json
   {"ts":"2026-05-21T14:30:00","change_id":"xxx","stage":"3-开发","input":"用户原始输入"}
   ```
-- `change_id`：从 STATE.md `活跃 Change` 字段读取
-- `stage`：从 STATE.md `当前阶段` 字段读取
+- `change_id`：从 STATE.md 活跃 Change 索引表读取
+- `stage`：从 `.specs/<id>/STATE.md` `当前阶段` 字段读取
 - `input`：用户消息原文（保留原文，不做加工）
 - `.specs/<id>/` 目录已存在（有活跃 Change 时），直接追加
 - 每条用户消息只追加一次
@@ -61,11 +61,20 @@ description: >
 ## 第一步 · 读状态
 
 1. 尝试读项目根目录 `STATE.md`。不存在 → 新项目，跳过
-2. 存在时执行完整性校验：调用 `python3 references/scripts/validate_state.py --state-file STATE.md --specs-dir .specs/`。脚本不可用时回退到 grep `references/artifacts/meta-artifacts.md` 的「完整性校验」清单。校验不通过 → 输出脚本返回的具体问题，降级为"无状态"模式（等同新项目）。如脚本返回 `fixes` 字段非空 → 额外提示「可自动修复缺失字段，回复"修复"即可」
-3. 校验通过后关注：`活跃 Change` / `当前阶段` / `当前任务` / `中断任务`
-4. `中断任务` 非空 → 优先级最高，走回溯流程
-5. 尝试读 `.specs/CONTEXT.md`。不存在 → 棕地项目提醒可跑 intel-scan，不强制
-6. `Pipeline 待续` 非空且 `活跃 Change` 为空 → 优先输出「📋 Pipeline 待续：{change-id}，要开始吗？」。用户确认"开始"后执行启动流程：清空 `Pipeline 待续` 字段 → PIPELINE.md 中该 change 标记为 `active` → 创建 `.specs/<id>/` 目录 → 更新 STATE.md `活跃 Change` → 路由到 0-需求（复用拆分时已有的需求信息）。`并行 Change` 非空 → 输出当前并行状态概览
+2. **旧格式检测与迁移**：检查 STATE.md 中 `## 活跃 Change` 下的内容——若为非表格的单行文本（如 `- xxx`）且非 `无`，判定为旧格式。旧格式迁移步骤：
+   - (a) 读取旧格式所有字段（活跃 Change、当前阶段、当前任务、中断任务、Pipeline 待续、并行 Change、阶段进度、更新时间）
+   - (b) 生成新格式 STATE.md：活跃 Change 改为表格格式（含 change-id / 阶段 / 最后更新 列），保留 Pipeline 待续和更新时间
+   - (c) 创建 `.specs/<id>/STATE.md`：写入当前阶段、当前任务、中断任务、阶段进度、更新时间
+   - (d) 旧格式的 `并行 Change` 字段内容迁移为索引表的多行
+   - (e) 迁移完成后输出「🔄 旧格式 STATE.md 已自动迁移为新格式」
+3. 执行完整性校验：调用 `python3 references/scripts/validate_state.py --state-file STATE.md --specs-dir .specs/`。脚本不可用时回退到 grep `references/artifacts/meta-artifacts.md` 的「完整性校验」清单。校验不通过 → 输出脚本返回的具体问题，降级为"无状态"模式（等同新项目）。如脚本返回 `fixes` 字段非空 → 额外提示「可自动修复缺失字段，回复"修复"即可」
+4. 校验通过后解析活跃 Change 索引表：
+   - **活跃数 = 0**：无活跃 change，后续路由按"无活跃 change"处理
+   - **活跃数 = 1**：自动读 `.specs/<id>/STATE.md` 获取当前阶段/当前任务/中断任务/阶段进度。将 change-id 写入会话上下文供后续阶段使用。**零额外操作**——用户体验与旧格式完全一致
+   - **活跃数 > 1**：列出所有活跃 change（change-id + 阶段），用 AskUserQuestion 让用户选择要操作的 change → 读选中的 `.specs/<id>/STATE.md` → 将 change-id 写入会话上下文
+5. 选定 change 后检查：`中断任务` 非空 → 优先级最高，走回溯流程
+6. 尝试读 `.specs/CONTEXT.md`。不存在 → 棕地项目提醒可跑 intel-scan，不强制
+7. `Pipeline 待续` 非空且活跃 Change 表为空 → 优先输出「📋 Pipeline 待续：{change-id}，要开始吗？」。用户确认"开始"后执行启动流程：清空 `Pipeline 待续` 字段 → PIPELINE.md 中该 change 标记为 `active` → 创建 `.specs/<id>/` 目录 + `.specs/<id>/STATE.md` → 更新 STATE.md 索引表添加行 → 路由到 0-需求
 
 ## 第二步 · 加载配置（可选）
 
@@ -146,7 +155,7 @@ user_input_capture: true
 | `保存` / `save` | 写 PROGRESS.md + 更新 STATE.md | 当前角色 |
 | `进化分析` / `反思一下` / `检查进化` / `进化信号` / `归因` | 运行 evolution_signal + evolution_reflect，展示假设和归因摘要 | 自动 |
 | `进化状态` | 显示进化触发条件状态（健康趋势 / 归因频率 / 历史数据量） | 自动 |
-| `go` / `下一步` / `next` | STATE 有活跃变更 → 当前阶段下一步；无 → 0-需求 | 自动 |
+| `go` / `下一步` / `next` | STATE 有活跃变更 → 读 per-change STATE 获取当前阶段 → 当前阶段下一步；无 → 0-需求 | 自动 |
 | `/lite` | 强制设置当前 change 复杂度为 LITE，跳转到当前阶段 | 开发员 |
 | `/heavy` | 强制设置当前 change 复杂度为 HEAVY，跳转到当前阶段 | 开发员 |
 | 任何新事物描述（当前无活跃 change） | 0-需求（自动生成 change-id） | 产品经理 |
@@ -298,21 +307,21 @@ mcp__slack__post_message channel="#team" text="✅ CH-001 用户登录功能验�
 ```
 
 **使用原则**：
-- MCP 数据为辅、文件为主。STATE.md 始终是唯一状态源
+- MCP 数据为辅、文件为主。STATE.md（项目级索引）+ `.specs/<id>/STATE.md`（change 级详情）始终是唯一状态源
 - MCP 不可用时自动回退到文件方案，不阻塞流程
 - MCP 操作需在阶段步骤中显式声明（如「可选：如已配置 GitHub MCP，创建 issue 关联 change」）
 
 ## 第七步 · 状态更新
 
-阶段完成（或产出工件）后，更新项目根 `STATE.md`：
+阶段完成（或产出工件）后，更新状态文件：
 
-- 产出工件时：更新 `当前阶段` + `当前任务`
-- 全部完成归档后：清空 `活跃 Change` / `当前阶段` / `当前任务`
-- **归档/废弃流程**：STATE.md 清空已在流程自身步骤中完成，此处不再重复
+- **阶段内高频更新**（阶段进度、当前任务）：写入 `.specs/<change-id>/STATE.md` 的对应字段
+- **阶段转换**：写入 `.specs/<change-id>/STATE.md` 的当前阶段字段 + 更新 STATE.md 索引表中该 change 的阶段和最后更新列
+- **启动新 change**：创建 `.specs/<id>/STATE.md` + 在 STATE.md 索引表添加新行
+- **归档**：从 STATE.md 索引表移除该 change 行 + 删除 `.specs/<id>/STATE.md`（归档/废弃流程自身步骤中完成，此处不再重复）
 - **轨迹采集触发**（配置项 `trace_auto_collect` 控制，默认 true）：归档流程步骤 4.5 已在 `special-flows.md` 中定义，此处仅声明配置项引用。设为 false 时跳过轨迹采集
-- 中断时：写 PROGRESS.md + 更新 `中断任务` 字段
+- **中断流程**（用户请求暂停/切换 change 时触发）：中断流程在 `special-flows.md` 中定义。状态更新规则：PIPELINE.md 中状态改为 `interrupted`，`.specs/<change-id>/STATE.md` 更新 `中断任务` 字段记录中断阶段
 - **Pipeline 衔接**（归档流程完成后触发）：归档流程内部步骤 8.5 已在 `special-flows.md` 中定义（读 PIPELINE.md → 找 pending → 写 Pipeline 待续 → 提示用户）。步骤 7 此处声明：归档流程完成后如 `Pipeline 待续` 已被写入，在状态更新时输出衔接提示
-- **中断流程**（用户请求暂停/切换 change 时触发）：中断流程在 `special-flows.md` 中定义。STATE.md 更新规则：PIPELINE.md 中状态改为 `interrupted`，STATE.md 更新 `中断任务` 字段记录中断阶段，`活跃 Change` 可清空
 - **决策同步检查**：grep 本阶段「决策信号」，逐条检查产出工件是否匹配
   - 有匹配 → 输出「🔄 决策同步：N 条新决策，执行受作用域同步」然后加载 `references/sync-workflow.md` 执行受作用域同步
   - 无匹配 → 跳过

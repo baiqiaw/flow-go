@@ -83,13 +83,14 @@ def _project_root(specs_dir):
 
 
 def read_state(specs_dir):
-    project_root = _project_root(specs_dir)
-    content = read_file(os.path.join(project_root, "STATE.md"))
+    """从 .specs/<id>/STATE.md 读取 change 级详细状态"""
+    change_state_path = os.path.join(specs_dir, "STATE.md")
+    content = read_file(change_state_path)
     if not content:
         return None
     info = {}
-    for field in ["活跃 Change", "当前阶段", "当前任务", "阶段进度"]:
-        m = re.search(rf"{re.escape(field)}:\s*(.+)", content)
+    for field in ["当前阶段", "当前任务", "阶段进度"]:
+        m = re.search(rf"## {re.escape(field)}\s*\n-\s*(.+)", content)
         if m:
             info[field] = m.group(1).strip()
     return info

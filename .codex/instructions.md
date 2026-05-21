@@ -22,7 +22,7 @@
 
 ## 核心规则
 
-- 读 `STATE.md` 获取当前状态，路由后加载 `references/stages/<N>-<name>.md` 对应文件
+- 读 `STATE.md`（项目级索引）获取活跃 Change 列表，再读 `.specs/<id>/STATE.md`（change 级详情）获取当前状态，路由后加载 `references/stages/<N>-<name>.md` 对应文件
 - 需要工件模板时加载 `references/artifacts/<category>.md`
 - 每个阶段有闸门检查，前置条件不满足则停下
 - 每个角色有红线（禁止事项），不可逾越
@@ -31,4 +31,6 @@
 
 ## 状态管理
 
-项目根目录 `STATE.md` 维护：活跃 Change、当前阶段、当前任务、中断任务。
+两层结构：
+- 项目根目录 `STATE.md`：活跃 Change 索引表（change-id / 阶段 / 最后更新）
+- `.specs/<id>/STATE.md`：当前阶段、当前任务、中断任务、阶段进度

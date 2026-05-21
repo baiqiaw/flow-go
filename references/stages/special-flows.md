@@ -8,7 +8,7 @@
 
 **角色**：开发员（修）→ 技术经理（审），跳过需求和设计阶段
 
-**输入**：STATE.md + bug 描述/用户报告 + 最近 SUMMARY.md（如存在）
+**输入**：STATE.md（索引表）+ `.specs/<id>/STATE.md`（change 级详情）+ bug 描述/用户报告 + 最近 SUMMARY.md（如存在）
 
 **分级**：
 - P0（完全不可用）：先回滚再诊断，不许没回滚就查代码
@@ -53,14 +53,14 @@
 
 **角色**：当前阶段对应角色。负责将 spec 从任意阶段安全归档。
 
-**输入**：STATE.md + `.specs/<id>/` 下所有已有工件
+**输入**：STATE.md（索引表）+ `.specs/<id>/STATE.md`（change 级详情）+ `.specs/<id>/` 下所有已有工件
 
 **触发**：
 - 用户说"归档/archive/收工/这个做完了"
 - 用户明确表示当前 spec 不需要继续后续阶段
 
 **步骤**：
-1. 确认归档目标：取 STATE.md 的 `活跃 Change`（必须非空）
+1. 确认归档目标：取 STATE.md 索引表的 `活跃 Change`（必须非空）
 2. 阶段盘点：检查 `.specs/<id>/` 下已有的工件文件，列出已完成阶段
 3. 归档原因确认：询问用户归档原因（正常完成/不需要后续阶段/需求变更/其他）
 4. 写归档记录：在 spec 目录下创建归档文件
@@ -71,14 +71,14 @@
 4.6b. **热修反馈分析**（可选）：如 `.specs/<id>/user-inputs.jsonl` 存在且行数 > 5 → 运行 `python3 references/scripts/feedback_classifier.py --specs-dir .specs/<id> --complexity LITE`。有 skill 反馈 → 追加到 `.specs/evolution/skill-feedback.jsonl`，输出「🔥 热修反馈已捕获：skill N 条」。行数 ≤ 5 时跳过
 5. LESSONS 提名：扫已有 SUMMARY 和 PROGRESS，符合提名条件的入库
 6. 临时文件清理：删除 spec 目录下所有 `*-PROGRESS.md`
-   > ⚠️ 步骤 7-9 必须严格按顺序执行，不允许跳步。STATE.md 清空（步骤 9）必须在目录移动（步骤 7）和索引更新（步骤 8）完成后才执行。
+   > ⚠️ 步骤 7-9 必须严格按顺序执行，不允许跳步。STATE.md 清理（步骤 9：索引表移除 + `.specs/<id>/STATE.md` 删除）必须在目录移动（步骤 7）和索引更新（步骤 8）完成后才执行。
 7. 移动归档：执行 `mv .specs/<id>/ .specs/archive/<date>-<id>/`（date 格式 YYYYMMDD；如 archive 目录不存在则先 `mkdir -p .specs/archive`）。**必须在步骤 8 之前完成**，因为索引指向移动后的路径
 8. 更新归档索引：读 `.specs/archive/ARCHIVE-INDEX.md`（不存在则按 `meta-artifacts.md` 模板创建），追加新归档条目到清单表格，更新归档统计
 8.1. **PIPELINE.md 状态更新**（如 PIPELINE.md 存在）：将当前归档 change 的状态从 `active` 改为 `completed`
-8.5. **Pipeline 衔接检查**：读取 `.specs/PIPELINE.md`（如存在），找下一个 `pending` change（按优先级排序，依赖已完成）。找到 → STATE.md 写入 `Pipeline 待续` 字段 → 输出「📋 Pipeline 下一个：{change-id} — {描述}」→ 询问用户是否立即开始。用户确认 → 走 AC-4 启动流程（清空 Pipeline 待续 → PIPELINE.md 标记 active → 创建目录 → 更新活跃 Change → 路由到 0-需求）。用户拒绝 → 保留 Pipeline 待续 字段。PIPELINE.md 不存在或无 pending → 跳过
-9. STATE.md 清理：活跃 Change / 当前阶段 / 当前任务 / 中断任务 全部清空。**注意**：`Pipeline 待续` 字段如步骤 8.5 已写入，则保留不清空
+8.5. **Pipeline 衔接检查**：读取 `.specs/PIPELINE.md`（如存在），找下一个 `pending` change（按优先级排序，依赖已完成）。找到 → 项目级 STATE.md 写入 `Pipeline 待续` 字段 → 输出「📋 Pipeline 下一个：{change-id} — {描述}」→ 询问用户是否立即开始。用户确认 → 走 AC-4 启动流程（清空 Pipeline 待续 → PIPELINE.md 标记 active → 创建目录 → STATE.md 索引表新增该 change 行 → 创建 `.specs/<id>/STATE.md` 初始状态 → 路由到 0-需求）。用户拒绝 → 保留 Pipeline 待续 字段。PIPELINE.md 不存在或无 pending → 跳过
+9. STATE.md 清理：从 STATE.md 索引表移除该 change 行 + 删除 `.specs/<id>/STATE.md`。**注意**：`Pipeline 待续` 字段如步骤 8.5 已写入，则保留不清空
 
-**输出**：`.specs/archive/<date>-<id>/` + STATE 更新
+**输出**：`.specs/archive/<date>-<id>/` + STATE.md 索引表更新 + `.specs/<id>/STATE.md` 已删除
 
 **闸门**：用户确认归档（必须显式确认原因）
 
@@ -91,7 +91,7 @@
 - [ ] spec 目录已移动到 `.specs/archive/<date>-<id>/`（原路径已不存在）
 - [ ] 归档索引已更新
 - [ ] Pipeline 衔接已检查（PIPELINE.md 存在时）
-- [ ] STATE.md 已清空（Pipeline 待续 保留如有写入）
+- [ ] STATE.md 已清理（索引表移除该 change 行 + `.specs/<id>/STATE.md` 已删除；Pipeline 待续 保留如有写入）
 
 **决策信号**：不适用（归档不产生决策，只记录状态）
 
@@ -103,7 +103,7 @@
 
 **角色**：当前阶段对应角色。负责将未完成 change 安全暂停。
 
-**输入**：STATE.md + `.specs/<id>/` 下所有已有工件 + `.specs/PIPELINE.md`（如存在）
+**输入**：STATE.md（索引表）+ `.specs/<id>/STATE.md`（change 级详情）+ `.specs/<id>/` 下所有已有工件 + `.specs/PIPELINE.md`（如存在）
 
 **触发**：
 - 用户请求暂停/切换 change
@@ -111,13 +111,13 @@
 - 当前 change 未走完全流程需要搁置
 
 **步骤**：
-1. 确认中断目标：取 STATE.md 的 `活跃 Change`（必须非空）
+1. 确认中断目标：取 STATE.md 索引表的 `活跃 Change`（必须非空）
 2. 中断确认：询问用户确认中断（区别于归档）— 输出「⚠️ 中断 {change-id}，当前阶段 {stage}，工件保留在 .specs/<id>/，可随时恢复。确认中断？」
 3. PIPELINE.md 更新（如存在）：将该 change 的状态从 `active` 改为 `interrupted`
-4. STATE.md 更新：`中断任务` 字段写入当前阶段信息（如 `3-开发/T02`），`活跃 Change` 清空，`当前阶段` 和 `当前任务` 清空
+4. STATE.md 更新：`.specs/<id>/STATE.md` 的 `中断任务` 字段写入当前阶段信息（如 `3-开发/T02`），`当前阶段` 和 `当前任务` 清空；STATE.md 索引表移除该 change 行
 5. 输出恢复提示：「📋 {change-id} 已中断。恢复方式：输入 `继续` 或 `resume`」
 
-**输出**：STATE.md 更新 + PIPELINE.md 状态更新
+**输出**：STATE.md 索引表更新 + `.specs/<id>/STATE.md` 更新 + PIPELINE.md 状态更新
 
 **闸门**：用户显式确认中断（必须区分于归档）
 
@@ -125,7 +125,7 @@
 - [ ] 中断目标已确认（活跃 Change 非空）
 - [ ] 中断已确认（非归档）
 - [ ] PIPELINE.md 状态已更新（如存在）
-- [ ] STATE.md 已更新（中断任务有值、活跃 Change 已清空）
+- [ ] STATE.md 已更新（`.specs/<id>/STATE.md` 中断任务有值、当前阶段和当前任务已清空；索引表已移除该 change 行）
 - [ ] 恢复提示已输出
 
 **决策信号**：不适用（中断不产生决策，只记录状态）
@@ -136,7 +136,7 @@
 
 **角色**：自动。负责并行启动新 change 并检测冲突。
 
-**输入**：STATE.md + `.specs/PIPELINE.md` + 用户指定的新 change-id
+**输入**：STATE.md（索引表）+ `.specs/PIPELINE.md` + 用户指定的新 change-id
 
 **触发**：
 - 用户请求并行启动新 change（当前已有 active change）
@@ -147,10 +147,10 @@
 2. **文件范围冲突检测**：读取 PIPELINE.md 中所有 `active` change 的 `文件范围` 列，与新 change 的文件范围做 glob 重叠检测
 3. 无冲突 → 继续；有冲突 → 输出「⚠️ 冲突：{新change} 的文件范围与 active {已有change} 重叠（{重叠路径}）」，建议串行执行或调整范围，阻止并行启动
 4. PIPELINE.md 更新：新 change 状态改为 `active`
-5. STATE.md 更新：`并行 Change` 字段追加新 change-id（逗号分隔）
+5. STATE.md 更新：索引表新增新 change 行 + 创建 `.specs/<id>/STATE.md`（初始阶段：0-需求，当前任务：无）
 6. 路由到新 change 的 0-需求阶段（复用拆分时的需求信息）
 
-**输出**：PIPELINE.md + STATE.md 更新
+**输出**：PIPELINE.md 更新 + STATE.md 索引表更新 + `.specs/<id>/STATE.md` 已创建
 
 **闸门**：用户确认并行启动 + 文件范围无冲突
 
@@ -158,14 +158,14 @@
 - [ ] 并行目标已确认
 - [ ] 文件范围冲突检测已执行
 - [ ] 无冲突时 PIPELINE.md 已更新
-- [ ] STATE.md 并行 Change 已追加
+- [ ] STATE.md 索引表已新增 change 行 + `.specs/<id>/STATE.md` 已创建
 - [ ] 冲突时已阻止并提示
 
 **决策信号**：不适用
 
 **角色**：项目经理。评估废弃影响并执行，不改代码。
 
-**输入**：STATE.md + 用户指定要废弃的 change-id（或当前活跃 Change）
+**输入**：STATE.md（索引表）+ `.specs/<id>/STATE.md`（change 级详情）+ 用户指定要废弃的 change-id（或当前活跃 Change）
 
 **触发**：
 - 用户说"废弃/放弃/abandon/cancel"
@@ -174,18 +174,18 @@
 **步骤**：
 1. 确认废弃目标：
    - 用户指定了 change-id → 确认 `.specs/<id>/` 存在
-   - 用户未指定 → 取 STATE.md 的 `活跃 Change`
+   - 用户未指定 → 取 STATE.md 索引表的 `活跃 Change`
    - 都没有 → 列出 `.specs/` 下所有非 archive 目录，让用户选
 2. 废弃影响评估：列出已到达阶段 + 代码提交状态 + 并行依赖
 3. 写 ABANDONED.md（见 `artifacts/deploy-artifacts.md`）
 4. 临时文件清理：删除所有 `*-PROGRESS.md`。user-inputs.jsonl 不删除，随目录移动到归档
 5. 移动归档：`.specs/<id>/` → `.specs/archive/abandoned/<date>-<id>/`（含 user-inputs.jsonl）
 6. 更新归档索引
-7. STATE.md 清理（如废弃的是活跃 Change → 清空全部字段）
+7. STATE.md 清理（如废弃的是活跃 Change → 从索引表移除该 change 行 + 删除 `.specs/<id>/STATE.md`）
 8. LESSONS 提名（从 PROGRESS 中提取已排除方案）
 9. outcome 标记：如 `.specs/traces.jsonl` 存在该 change-id 的记录且 `outcome` 为 null，更新为 `abandoned`（无需运行 trace_collector，直接原地修改 traces.jsonl 对应行）
 
-**输出**：`.specs/archive/abandoned/<date>-<id>/ABANDONED.md` + STATE 更新
+**输出**：`.specs/archive/abandoned/<date>-<id>/ABANDONED.md` + STATE.md 索引表更新 + `.specs/<id>/STATE.md` 已删除
 
 **闸门**：用户显式确认废弃
 
@@ -195,7 +195,7 @@
 - [ ] ABANDONED.md 已写入
 - [ ] PROGRESS.md 已清理
 - [ ] 归档索引已更新
-- [ ] STATE.md 已更新（如适用）
+- [ ] STATE.md 已更新（索引表已移除该 change 行 + `.specs/<id>/STATE.md` 已删除，如适用）
 
 **决策信号**：不适用（废弃不产生决策，只记录理由）
 
@@ -205,10 +205,10 @@
 
 **角色**：自动，无特定角色。负责恢复上下文，不做业务决策。
 
-**输入**：STATE.md（必须存在）
+**输入**：STATE.md（索引表，必须存在）+ `.specs/<id>/STATE.md`（change 级详情，如存在）
 
 **步骤**：
-1. 读 STATE.md（活跃 Change / 当前阶段 / 中断任务 / Pipeline 待续 / 并行 Change）
+1. 读 STATE.md 索引表（活跃 Change / Pipeline 待续），如有活跃 Change 则读取对应 `.specs/<id>/STATE.md`（当前阶段 / 当前任务 / 中断任务 / 阶段进度）
 2. **Pipeline 待续检查**：`Pipeline 待续` 非空且 `活跃 Change` 为空 → 优先输出「📋 Pipeline 待续：{change-id}，要开始吗？」，用户确认后走 AC-4 启动流程
 3. 读最近 3 个 `<task-id>-SUMMARY.md`
 4. 读 `.specs/LESSONS.md`
@@ -227,7 +227,7 @@
 **闸门**：用户确认恢复目标阶段
 
 **自检**：
-- [ ] STATE.md 已读（含 Pipeline 待续 + 并行 Change）
+- [ ] STATE.md 已读（索引表 + `.specs/<id>/STATE.md` 如存在）
 - [ ] Pipeline 待续已检查
 - [ ] 最近 3 个 SUMMARY 已扫
 - [ ] 搁置时长已检查

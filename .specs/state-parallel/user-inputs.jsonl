@@ -1,0 +1,3 @@
+{"ts":"2026-05-21T00:00:00","change_id":"state-parallel","stage":"0-需求","input":"需要优化STATE.md，需要支持多个会话，多个change并行"}
+{"ts":"2026-05-21T00:10:00","change_id":"state-parallel","stage":"1-设计","input":"用户确认架构设计三段"}
+{"ts":"2026-05-21T00:20:00","change_id":"state-parallel","stage":"2-任务","input":"用户确认任务拆解，无修改意见"}{"ts":"2026-05-21T15:00:00","change_id":"state-parallel","stage":"3-开发","input":"go"}

@@ -6,52 +6,103 @@
 
 ## STATE.md（项目根目录，跨变更）
 
-### Schema
+### 设计说明
+
+STATE.md 采用**两层结构**：
+- **项目级索引**（STATE.md）：记录所有活跃 change 的概要信息，轻量、低频更新
+- **Change 级详情**（.specs/\<id\>/STATE.md）：记录单个 change 的详细状态，高频更新
+
+这种分离确保多个会话可以同时操作不同 change 而不产生写冲突——每个会话只读写自己 change 的 STATE 文件。
+
+### 项目级索引 Schema（STATE.md）
 
 | 字段 | 必填 | 格式 | 默认值 | 说明 |
 |------|------|------|--------|------|
-| 活跃 Change | 是 | `<kebab-case-id>` 或 `无` | `无` | 当前正在进行的 change-id。归档/废弃后清空 |
+| 活跃 Change 表 | 是 | Markdown 表格（见下方模板），无活跃 change 时表体为空 | 空表 | 所有活跃 change 的概要。每行：change-id / 阶段 / 最后更新 |
+| Pipeline 待续 | 是 | `<change-id>` 或 `无` | `无` | 归档衔接时写入下一个 pending change-id |
+| 更新时间 | 是 | `YYYY-MM-DD` | 创建当天 | 索引最后更新时间 |
+
+### Change 级详情 Schema（.specs/\<id\>/STATE.md）
+
+| 字段 | 必填 | 格式 | 默认值 | 说明 |
+|------|------|------|--------|------|
 | 当前阶段 | 是 | `<N>-<name>` 或 `无` | `无` | N 为 0-7，name 为阶段中文名（如 `3-开发`） |
 | 当前任务 | 是 | `<task-id>` 或 `无` | `无` | 当前正在执行或下一个要执行的任务 ID |
 | 中断任务 | 是 | `<task-id>` 或 `无` | `无` | 非空时回溯流程优先处理。仅 3-开发阶段写入 |
-| Pipeline 待续 | 是 | `<change-id>` 或 `无` | `无` | 归档衔接时写入下一个 pending change-id。用户确认启动后清空。跨会话恢复入口 |
-| 并行 Change | 是 | `<id1>,<id2>` 或 `无` | `无` | 并行活跃 change-id 列表（逗号分隔）。单 change 时为 `无` |
 | 阶段进度 | 否 | `步骤 N: <简述>` 或 `无` | `无` | 非开发阶段的轻量级检查点。进入时写入当前步骤号+简述，阶段完成时清空 |
-| 更新时间 | 是 | `YYYY-MM-DD` | 创建当天 | 用于回溯时判断搁置时长（30 天/60 天阈值） |
+| 更新时间 | 是 | `YYYY-MM-DD` | 创建当天 | 用于回溯时判断搁置时长 |
 
 ### 格式约束
 
-1. 文件编码 UTF-8，首行必须是 `# STATE.md — flow-go 状态文件`
+1. 两个文件编码均为 UTF-8，首行分别为 `# STATE — flow-go 项目状态` 和 `# CHANGE STATE — <change-id>`
 2. 字段使用 Markdown 标题 + 列表格式（非 YAML），确保人可读、AI 可 grep
 3. 所有字段必须存在，不允许缺字段。无值时填 `无`
-4. `活跃 Change` 值必须对应 `.specs/<id>/` 目录存在
-5. `当前阶段` 值必须在 `0-需求` / `1-设计` / `2-任务` / `3-开发` / `4-测试` / `5-审查` / `6-部署` / `7-验收` 中取值
-6. `当前任务` 和 `中断任务` 值必须对应 TASK.md 中的 task id（如有活跃 change）
+4. 项目 STATE.md 活跃 Change 表中每个 change-id 必须对应 `.specs/<id>/` 目录和 `.specs/<id>/STATE.md` 存在
+5. `.specs/<id>/STATE.md` 的 `当前阶段` 值必须在 `0-需求` / `1-设计` / `2-任务` / `3-开发` / `4-测试` / `5-审查` / `6-部署` / `7-验收` 中取值
+6. `当前任务` 和 `中断任务` 值必须对应 TASK.md 中的 task id
 7. 同一 task-id 不得同时出现在 `当前任务` 和 `中断任务`
-8. `Pipeline 待续` 非空时，值必须为 `.specs/` 下存在的 change-id 或 `.specs/PIPELINE.md` 中状态为 `pending` 的 change-id
-9. `并行 Change` 非空时，每个逗号分隔的 id 必须在 `.specs/PIPELINE.md` 中状态为 `active`
+8. `Pipeline 待续` 非空时，值必须为 `.specs/PIPELINE.md` 中状态为 `pending` 的 change-id
+
+### 一致性约束（索引 ↔ 详情）
+
+1. 项目 STATE.md 索引表中每个 change 的 `阶段` 值必须与 `.specs/<id>/STATE.md` 的 `当前阶段` 一致
+2. 项目 STATE.md 索引表中每个 change 的 `最后更新` 值必须 ≤ `.specs/<id>/STATE.md` 的 `更新时间`
+3. 归档时必须同时移除索引表行 + 删除 `.specs/<id>/STATE.md`
+
+### 旧格式迁移
+
+检测规则：当 STATE.md 中 `## 活跃 Change` 下的内容为单行文本（非表格、非"无"）时，判定为旧格式。
+
+迁移步骤：
+1. 读取旧格式所有字段（活跃 Change、当前阶段、当前任务、中断任务、Pipeline 待续、并行 Change、阶段进度、更新时间）
+2. 生成新格式 STATE.md：活跃 Change 改为表格格式（含阶段和最后更新列），保留 Pipeline 待续和更新时间
+3. 创建 `.specs/<id>/STATE.md`：包含当前阶段、当前任务、中断任务、阶段进度、更新时间
+4. 旧格式的 `并行 Change` 字段内容迁移为索引表的多行
 
 ### 完整性校验（回溯流程入口时执行）
 
+**项目级 STATE.md 校验**：
 - [ ] 文件存在且非空
-- [ ] 首行包含 `STATE.md`
-- [ ] 7 个字段全部存在（grep 7 个字段名：活跃 Change、当前阶段、当前任务、中断任务、Pipeline 待续、并行 Change、更新时间）
-- [ ] `活跃 Change` ≠ `无` → `.specs/<id>/` 目录存在
+- [ ] 首行包含 `STATE`
+- [ ] 包含 `活跃 Change` 章节（表格格式或空）
+- [ ] 包含 `Pipeline 待续` 字段
+- [ ] 包含 `更新时间` 字段
+- [ ] 索引表中每个 change-id → `.specs/<id>/` 目录存在
+- [ ] 索引表中每个 change-id → `.specs/<id>/STATE.md` 存在
+
+**Per-change STATE.md 校验**：
+- [ ] 文件存在且非空
+- [ ] 首行包含 `CHANGE STATE`
+- [ ] 4 个字段全部存在（当前阶段、当前任务、中断任务、阶段进度）
 - [ ] `当前阶段` ≠ `无` → 值在 8 个合法阶段名中
 - [ ] `中断任务` ≠ `无` → `当前任务` ≠ `中断任务`
-- [ ] `Pipeline 待续` 非空 → 对应 change-id 存在（.specs/ 目录或 PIPELINE.md pending）
-- [ ] `并行 Change` 非空 → 每个 id 在 PIPELINE.md 中为 active
 - [ ] `更新时间` 格式为 YYYY-MM-DD
+
+**一致性校验**：
+- [ ] 索引表中每个 change 的阶段值与 per-change STATE 的当前阶段一致
 
 校验不通过时：输出具体缺失/不一致项，提示用户修复。不阻塞流程（降级为"无状态"模式，等同于新项目）。
 
 ### 模板
 
+**项目级 STATE.md**：
 ```markdown
 # STATE — flow-go 项目状态
 
 ## 活跃 Change
+| change-id | 阶段 | 最后更新 |
+|-----------|------|---------|
+
+## Pipeline 待续
 - 无
+
+## 更新时间
+- YYYY-MM-DD
+```
+
+**Change 级 STATE.md（.specs/\<id\>/STATE.md）**：
+```markdown
+# CHANGE STATE — <change-id>
 
 ## 当前阶段
 - 无
@@ -60,12 +111,6 @@
 - 无
 
 ## 中断任务
-- 无
-
-## Pipeline 待续
-- 无
-
-## 并行 Change
 - 无
 
 ## 阶段进度

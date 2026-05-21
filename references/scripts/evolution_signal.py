@@ -145,9 +145,8 @@ def _extract_test_repeated(specs_dir):
 
 
 def _extract_hotfix(specs_dir):
-    """从 STATE.md 检测热修标记"""
-    # STATE.md 在项目根目录，specs_dir 是 .specs/<id>，向上一级
-    state_path = Path(specs_dir).parent.parent / "STATE.md"
+    """从 .specs/<id>/STATE.md 检测热修标记"""
+    state_path = Path(specs_dir) / "STATE.md"
     content = _read_file(state_path)
     if not content:
         return []
