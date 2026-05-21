@@ -122,21 +122,20 @@ def validate(state_path, specs_dir=None):
 
     # 生成自动修复建议
     if missing:
+        from datetime import date
+        defaults = {
+            "活跃 Change": "无",
+            "当前阶段": "无",
+            "当前任务": "无",
+            "中断任务": "无",
+            "Pipeline 待续": "无",
+            "并行 Change": "无",
+            "更新时间": date.today().isoformat(),
+        }
         fix_fields = {}
         for f in missing:
-            if f == "当前任务":
-                fix_fields[f] = "无"
-            elif f == "中断任务":
-                fix_fields[f] = "无"
-            elif f == "Pipeline 待续":
-                fix_fields[f] = "无"
-            elif f == "并行 Change":
-                fix_fields[f] = "无"
-            elif f == "阶段进度":
-                fix_fields[f] = "无"
-            elif f == "更新时间":
-                from datetime import date
-                fix_fields[f] = date.today().isoformat()
+            if f in defaults:
+                fix_fields[f] = defaults[f]
         fixes.append({
             "action": "补充缺失字段",
             "fields": fix_fields,
