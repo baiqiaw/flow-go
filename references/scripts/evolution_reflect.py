@@ -646,6 +646,9 @@ def _generate_suggestion_hypothesis(cluster, change_id):
     confidence = min(0.5 + frequency * 0.1, 0.9)
     risk = RISK_RULES.get("suggest_improvement", "medium")
 
+    # 一次性洞察判断使用反馈原始置信度（非重新计算的值）
+    original_max_confidence = max(r.get("confidence", 0) for r in cluster)
+
     hypothesis = {
         "id": f"H{datetime.now().strftime('%Y%m%d')}{hash(representative) % 1000:03d}",
         "created_at": datetime.now().isoformat(timespec="seconds"),
@@ -669,9 +672,9 @@ def _generate_suggestion_hypothesis(cluster, change_id):
         "status": "pending",
     }
 
-    # 一次性洞察：只有 1 条反馈但置信度较高时
+    # 一次性洞察：只有 1 条反馈但原始置信度较高时
     insight = None
-    if frequency == 1 and confidence >= 0.8:
+    if frequency == 1 and original_max_confidence >= 0.8:
         insight = {
             "id": f"INS-{datetime.now().strftime('%Y%m%d')}-oneshot",
             "signature": hypothesis["signature"],
