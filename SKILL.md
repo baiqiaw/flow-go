@@ -65,6 +65,8 @@ description: >
 3. 校验通过后关注：`活跃 Change` / `当前阶段` / `当前任务` / `中断任务`
 4. `中断任务` 非空 → 优先级最高，走回溯流程
 5. 尝试读 `.specs/CONTEXT.md`。不存在 → 棕地项目提醒可跑 intel-scan，不强制
+   - 读取 `.specs/CONTEXT.md`（如存在）→ 将术语定义注入到会话上下文，后续所有阶段使用规范术语
+   - 读取 `.specs/adr/` 目录（如存在且非空）→ 统计 ADR 数量，提示"已有 N 条架构决策记录，设计阶段将自动检查"
 6. `Pipeline 待续` 非空且 `活跃 Change` 为空 → 优先输出「📋 Pipeline 待续：{change-id}，要开始吗？」。用户确认"开始"后执行启动流程：清空 `Pipeline 待续` 字段 → PIPELINE.md 中该 change 标记为 `active` → 创建 `.specs/<id>/` 目录 → 更新 STATE.md `活跃 Change` → 路由到 0-需求（复用拆分时已有的需求信息）。`并行 Change` 非空 → 输出当前并行状态概览
 
 ## 第二步 · 加载配置（可选）
@@ -141,6 +143,7 @@ user_input_capture: true
 | `校准评分` / `校准权重` | 运行 health_calibration.py | 自动 |
 | `清理归档` / `归档维护` / `archive cleanup` | 归档维护流程 | 运维 |
 | `热修` / `hotfix` / `紧急修复` | 热修流程 | 开发员→技术经理 |
+| `原型` / `prototype` | 1-设计（原型子流程） | 技术经理 |
 | `回溯` / `recall` | 回溯流程 | 自动 |
 | `整理` / `neat` / `同步` | 加载 `references/sync-workflow.md` 执行全量同步 | — |
 | `保存` / `save` | 写 PROGRESS.md + 更新 STATE.md | 当前角色 |
@@ -151,6 +154,8 @@ user_input_capture: true
 | `/heavy` | 强制设置当前 change 复杂度为 HEAVY，跳转到当前阶段 | 开发员 |
 | 任何新事物描述（当前无活跃 change） | 0-需求（自动生成 change-id） | 产品经理 |
 | 模糊不清 | 反问：「新需求 / 继续上次 / 审查测试 / 别的？」 | — |
+
+**并行模式 AFK 优先调度**：当并行模式（parallel）启动时，读取 TASK.md 各 task 的 mode 属性（afk/hitl/colab），AFK 任务优先分配给独立 agent 执行，HITL 任务留在当前会话等待人工决策。mode 属性未设置时默认为 colab。
 
 ### 路由决策可视化
 
@@ -189,7 +194,12 @@ user_input_capture: true
 | 6-部署 | REVIEW.md（严重项经循环评审确认 = 0） | LITE 跳过此阶段 | 提示先跑 5-审查 |
 | 7-验收 | DEPLOY.md + 全部工件 | 4-测试通过 + CHANGE.md AC 全部满足 | 提示先跑 6-部署 |
 
-**闸门脚本化验证**：可调用 `python3 references/scripts/gate_check.py --stage <N> --specs-dir .specs/<id> --complexity <level>` 自动检查工件存在性。脚本不可用时回退到手动检查上表。
+**闸门脚本化验证**：可调用 `python3 references/scripts/gate_check.py --stage <N> --specs-dir .specs/<id> --complexity <level>` 自动检查工件存在性。脚本新增 CONTEXT/ADR 信息报告（`--complexity heavy` + `--stage >=1` 时报告 `.specs/adr/` 状态，`--stage >=0` 时报告 `.specs/CONTEXT.md` 存在状态）。脚本不可用时回退到手动检查上表。
+
+**CONTEXT/ADR 补充检查**（不阻塞闸门通过，仅作为信息报告）：
+- 阶段 0（STANDARD/HEAVY）：如 REQUIREMENT.md 术语表有内容但 `.specs/CONTEXT.md` 不存在 → 输出提示「建议创建 CONTEXT.md 记录项目术语」
+- 阶段 1（HEAVY）：检查设计阶段是否完成了 ADR 三条件评估（非阻塞）
+- 这些检查由 `gate_check.py` 自动执行，脚本不可用时跳过
 
 ### 闸门后续 · Handoff 检查（仅阶段转换时执行）
 
@@ -212,6 +222,7 @@ Handoff 检查在**首次阶段转换**时执行，验证上游上下文是否�
 ✅ 当前角色：<角色名>
 ✅ 角色红线：<一句话提醒该角色的禁止事项>
 ✅ 第一动作：<具体下一步>
+✅ 项目记忆：{如 CONTEXT.md 存在："N 个领域术语" + "M 条 ADR" / "无"}
 ```
 
 ## 角色红线速查
@@ -313,6 +324,7 @@ mcp__slack__post_message channel="#team" text="✅ CH-001 用户登录功能验�
 - 中断时：写 PROGRESS.md + 更新 `中断任务` 字段
 - **Pipeline 衔接**（归档流程完成后触发）：归档流程内部步骤 8.5 已在 `special-flows.md` 中定义（读 PIPELINE.md → 找 pending → 写 Pipeline 待续 → 提示用户）。步骤 7 此处声明：归档流程完成后如 `Pipeline 待续` 已被写入，在状态更新时输出衔接提示
 - **中断流程**（用户请求暂停/切换 change 时触发）：中断流程在 `special-flows.md` 中定义。STATE.md 更新规则：PIPELINE.md 中状态改为 `interrupted`，STATE.md 更新 `中断任务` 字段记录中断阶段，`活跃 Change` 可清空
+- **CONTEXT/ADR 持久化检查**：设计阶段完成时，如产出了新 ADR（`.specs/adr/` 下有新文件），输出「📜 新增 N 条 ADR：{ADR 标题列表}」。归档时 `.specs/CONTEXT.md` 和 `.specs/adr/` 不删除（跨 change 持久化），仅清理 `.specs/<id>/` 下的 change 级文件
 - **决策同步检查**：grep 本阶段「决策信号」，逐条检查产出工件是否匹配
   - 有匹配 → 输出「🔄 决策同步：N 条新决策，执行受作用域同步」然后加载 `references/sync-workflow.md` 执行受作用域同步
   - 无匹配 → 跳过

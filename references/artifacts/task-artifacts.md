@@ -17,6 +17,7 @@
 - [ ] 预检环已通过（或残留问题已记录）
 - [ ] context_budget 与估算结果一致（若启用 context_budget_mode）
 - [ ] 并行分组已体现在依赖图描述中（若启用 context_budget_mode）
+- [ ] mode 字段已填写（afk/hitl/colab）
 
 ### SUMMARY.md 自检
 - [ ] 改动文件表已填写（非空）
@@ -41,7 +42,7 @@
 
 ## 任务列表
 
-<task id="T01" parallel="true" priority="must" type="feature">
+<task id="T01" parallel="true" priority="must" type="feature" mode="afk">
   <name>任务名称</name>
   <read_files>src/module/*</read_files>
   <write_files>src/module/NewFeature.ts</write_files>
@@ -53,7 +54,7 @@
   <agent_hint>可与其他 small 任务并行执行</agent_hint>
 </task>
 
-<task id="T02" parallel="false" priority="should" type="bugfix">
+<task id="T02" parallel="false" priority="should" type="bugfix" mode="colab">
   <name>依赖 T01 的任务</name>
   <read_files>src/module/NewFeature.py</read_files>
   <write_files>src/module/integration.py</write_files>
@@ -74,7 +75,13 @@ type 取值（必填）：
   chore    — 杂项维护（依赖更新/清理/工具升级等）
 从 REQUIREMENT.md 描述推断：含"修复/fix/bug"→bugfix，"重构/refactor"→refactor，"文档/doc"→doc，"配置/config/环境"→config，"升级/清理/依赖"→chore，其余→feature
 
-context_budget 取值（可选，预检环自动填充）：
+mode 取值（必填）：
+	  afk    — AI 自动执行（无需人工决策）
+	  hitl   — 需人工决策/审阅/外部操作
+	  colab  — AI + 人协作（默认）
+	判断原则：有明确 action+done 且无外部依赖 → afk；涉及架构决策/设计审阅/外部服务 → hitl；不确定 → colab
+
+	context_budget 取值（可选，预检环自动填充）：
   small  — 预估 < 2000 token（read_files ≤ 3 + action ≤ 50 字）
   medium — 预估 2000-5000 token（read_files 4-6 或 action 50-100 字）
   large  — 预估 > 5000 token（read_files > 6 或 action > 100 字）

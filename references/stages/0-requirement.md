@@ -42,8 +42,16 @@
    - 用户拒绝拆分 → 标记为"大型 change"，后续阶段自动启用分段呈现
 3. 自动生成 change-id：从描述提取核心关键词，kebab-case（2-4 词），检查 `.specs/<id>/` 不存在
 4. 写用户故事 + BDD AC（Given/When/Then），每条 AC 必须可测试
+   4.1 **术语表同步到 CONTEXT.md**：
+	   - REQUIREMENT.md 术语表章节完成后，同步写入 `.specs/CONTEXT.md`
+	   - 使用 `references/artifacts/memory-artifacts.md` 中的 CONTEXT 模板格式
+	   - 惰性创建：首次有术语时才创建文件
+	   - 写入前读取 `.specs/CONTEXT.md`（如存在），进行术语冲突检测：
+	     * 遇到已有术语但定义不同 → 提醒用户确认（"术语 'X' 已有定义 '{旧定义}'，本次描述为 '{新描述}'，是否更新？"）
+	     * 遇到已有术语的"避免别名"列表中的词 → 替换为规范术语并提醒
+	   - 更新后重新写入 `.specs/CONTEXT.md`，保留已有术语不变，追加或更新新术语
 5. 范围排除：明确"这次不做什么"，至少 1 条
-6. 影响面判定：是否改 REQUIREMENT / 涉及架构 / 影响 AC / 需要 CONTEXT 更新
+6. 影响面判定：是否改 REQUIREMENT / 涉及架构 / 影响 AC / 需要 CONTEXT 更新。CONTEXT 需更新：是 / 否（如新增术语或有术语定义变更）
 7. 交叉评审前自检（lightweight）：快速检查 artifact 完整性
    - [ ] 无 TBD/TODO/待定 占位符
    - [ ] AC 条数与用户确认的范围一致
@@ -94,3 +102,5 @@
 ## 上下文需求清单
 
 首个阶段，无上游依赖。
+
+| CONTEXT.md | 域语言 | 可选 | 原文保留 |

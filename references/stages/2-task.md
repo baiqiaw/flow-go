@@ -6,7 +6,24 @@
 
 **步骤**：
 1. 拆原子任务：每个任务 ≤ 1 fresh context 可完成（通常 < 100 行代码）
+   垂直切片原则：
+	   - 每个任务必须是垂直切片：穿透所有相关层（schema→API→UI→测试），完成后可独立验证
+	   - 禁止水平切片（按层拆分：如"所有数据库 schema 一个任务、所有 API 一个任务"）
+	   - 水平切片信号：任务 action 只涉及单层操作（如"修改数据库表结构"无对应 API 和测试）
+	   - 垂直切片验证：任务 done 条件必须包含端到端验证（不只是某一层的通过）
+	   - 允许共享 setup/teardown 任务作为独立前序任务（如公共类型定义、数据库 migration）
 2. 标并行 `[P]` + 依赖图：无依赖的任务标 `[P]`，有依赖的列 `depends_on`
+   AFK/HITL 标记指导：
+	   - 每个 task 增加 mode 属性标记（afk / hitl / colab），默认 colab
+	   - **AFK**（Away From Keyboard）：可完全交给 AI agent 自动执行
+	     * 特征：有明确 action 和 done 条件、无需人工决策、无外部系统依赖
+	     * 适合：纯实现任务、有明确测试的任务、文档编写
+	   - **HITL**（Human In The Loop）：需要人工决策或操作
+	     * 特征：涉及架构决策、设计审阅、外部服务操作、需要人工确认的判断
+	     * 适合：设计方案选择、外部 API 调试、需要人工审阅的任务
+	   - **COLAB**（Collaborative）：AI + 人协作完成（默认）
+	   - 标记原则：优先标记为 AFK（减少人工干预）；不确定时标 COLAB
+	   - 并行模式增强：parallel 路由优先将 AFK 任务分配给独立 agent
 3. 每个任务定义 XML 块：id / name / read_files / write_files / action / verify / done / depends_on + 可选的 context_budget / agent_hint
 4. verify 必须是可执行命令（如 `npm test -- xxx` / `pytest xxx`）
 5. **预检环**（配置项 `preflight_check` 控制，默认开启）：
@@ -38,6 +55,8 @@
 - [ ] context_budget 与估算结果一致（若启用）
 - [ ] 并行分组已体现在依赖图描述中（若启用）
 - [ ] 交叉评审报告 6 维全 PASS
+- [ ] 垂直切片检查：每个任务的 action 穿透多层，done 条件包含端到端验证
+- [ ] AFK/HITL 标记检查：每个任务有 mode 属性（afk/hitl/colab）
 
 **决策信号**：
 - 任务拆分产生新依赖关系

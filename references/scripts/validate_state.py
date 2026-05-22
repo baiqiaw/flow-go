@@ -56,32 +56,36 @@ def parse_state(state_path):
 
 def validate(state_path, specs_dir=None):
     """执行完整性校验，返回结果字典"""
-    errors = []
+    missing = []
     warnings = []
+    info = []
 
     # 校验 1: 文件存在且非空
     if not os.path.isfile(state_path):
-        return {"passed": False, "errors": ["STATE.md 文件不存在"], "warnings": [], "fields": {}, "fixes": []}
+        return {"passed": False, "missing": ["STATE.md 文件不存在"],
+                "warnings": [], "info": [], "fields": {}, "fixes": []}
 
     with open(state_path, encoding="utf-8") as f:
         content = f.read()
     if not content.strip():
-        return {"passed": False, "errors": ["STATE.md 文件为空"], "warnings": [], "fields": {}, "fixes": []}
+        return {"passed": False, "missing": ["STATE.md 文件为空"],
+                "warnings": [], "info": [], "fields": {}, "fixes": []}
 
     # 校验 2: 首行包含 STATE
     first_line = content.split("\n")[0]
     if "STATE" not in first_line:
-        errors.append(f"首行不包含 'STATE'：{first_line}")
+        missing.append(f"首行不包含 'STATE'：{first_line}")
 
     # 解析字段
     fields, parse_errors = parse_state(state_path)
     if parse_errors:
-        return {"passed": False, "errors": parse_errors, "warnings": [], "fields": {}, "fixes": []}
+        return {"passed": False, "missing": parse_errors,
+                "warnings": [], "info": [], "fields": {}, "fixes": []}
 
     # 校验 3: 7 个字段全部存在
-    missing = [f for f in REQUIRED_FIELDS if f not in fields]
-    if missing:
-        errors.append(f"缺少必填字段：{', '.join(missing)}")
+    field_missing = [f for f in REQUIRED_FIELDS if f not in fields]
+    if field_missing:
+        missing.append(f"缺少必填字段：{', '.join(field_missing)}")
 
     fixes = []
 
@@ -90,22 +94,22 @@ def validate(state_path, specs_dir=None):
     if active and active != "无" and specs_dir:
         # 路径遍历防护：change-id 应为合法 kebab-case，不含路径分隔符
         if ".." in active or "/" in active or "\\" in active:
-            errors.append(f"活跃 Change '{active}' 包含非法路径字符")
+            missing.append(f"活跃 Change '{active}' 包含非法路径字符")
         else:
             change_dir = os.path.join(specs_dir, active)
             if not os.path.isdir(change_dir):
-                errors.append(f"活跃 Change '{active}' 对应的 .specs/{active}/ 目录不存在")
+                missing.append(f"活跃 Change '{active}' 对应的 .specs/{active}/ 目录不存在")
 
     # 校验 5: 当前阶段合法
     stage = fields.get("当前阶段", "")
     if stage and stage != "无" and stage not in VALID_STAGES:
-        errors.append(f"当前阶段 '{stage}' 不在合法值中：{VALID_STAGES}")
+        missing.append(f"当前阶段 '{stage}' 不在合法值中：{VALID_STAGES}")
 
     # 校验 6: 中断任务和当前任务不重复
     cur_task = fields.get("当前任务", "")
     int_task = fields.get("中断任务", "")
     if cur_task and int_task and cur_task != "无" and int_task != "无" and cur_task == int_task:
-        errors.append(f"当前任务和中断任务相同：{cur_task}")
+        missing.append(f"当前任务和中断任务相同：{cur_task}")
 
     # 校验 7: Pipeline 待续验证（宽松）
     pipeline = fields.get("Pipeline 待续", "")
@@ -118,10 +122,10 @@ def validate(state_path, specs_dir=None):
         try:
             datetime.strptime(update_time, "%Y-%m-%d")
         except ValueError:
-            errors.append(f"更新时间格式不正确：'{update_time}'，应为 YYYY-MM-DD")
+            missing.append(f"更新时间格式不正确：'{update_time}'，应为 YYYY-MM-DD")
 
     # 生成自动修复建议
-    if missing:
+    if field_missing:
         from datetime import date
         defaults = {
             "活跃 Change": "无",
@@ -133,7 +137,7 @@ def validate(state_path, specs_dir=None):
             "更新时间": date.today().isoformat(),
         }
         fix_fields = {}
-        for f in missing:
+        for f in field_missing:
             if f in defaults:
                 fix_fields[f] = defaults[f]
         fixes.append({
@@ -141,11 +145,12 @@ def validate(state_path, specs_dir=None):
             "fields": fix_fields,
         })
 
-    passed = len(errors) == 0
+    passed = len(missing) == 0
     return {
         "passed": passed,
-        "errors": errors,
+        "missing": missing,
         "warnings": warnings,
+        "info": info,
         "fields": fields,
         "fixes": fixes,
     }
