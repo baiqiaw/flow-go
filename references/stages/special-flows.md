@@ -88,6 +88,11 @@
 8.1. **PIPELINE.md 状态更新**（如 PIPELINE.md 存在）：将当前归档 change 的状态从 `active` 改为 `completed`
 8.5. **Pipeline 衔接检查**：读取 `.specs/PIPELINE.md`（如存在），找下一个 `pending` change（按优先级排序，依赖已完成）。找到 → 项目级 STATE.md 写入 `Pipeline 待续` 字段 → 输出「📋 Pipeline 下一个：{change-id} — {描述}」→ 询问用户是否立即开始。用户确认 → 走 AC-4 启动流程（清空 Pipeline 待续 → PIPELINE.md 标记 active → 创建目录 → STATE.md 索引表新增该 change 行 → 创建 `.specs/<id>/STATE.md` 初始状态 → 路由到 0-需求）。用户拒绝 → 保留 Pipeline 待续 字段。PIPELINE.md 不存在或无 pending → 跳过
 9. STATE.md 清理：从 STATE.md 索引表移除该 change 行 + 删除 `.specs/<id>/STATE.md`。**注意**：`Pipeline 待续` 字段如步骤 8.5 已写入，则保留不清空
+9.5. **成功指标**（归档完成时输出，供用户快速判断 flow-go 是否生效）：
+    - Diff 中无关改动行数是否减少？（对比上次归档 diff）
+    - 因假设错误导致的返工是否减少？（回顾本 change 是否有因猜测导致的返工）
+    - 澄清问题是否在实现前提出？（回顾需求/设计阶段的提问记录）
+    > 三项全 ✅ → flow-go 流程在生效。有 ❌ → 下个 change 重点关注该环节。
 10. **Git 归档提交**：将所有归档相关变更纳入一次提交
     - (a) `git add STATE.md .specs/archive/ .specs/ARCHIVE-INDEX.md`（归档索引和主状态）
     - (b) `git add .specs/traces.jsonl .specs/health-history.jsonl`（如存在，轨迹和健康记录）
