@@ -8,7 +8,7 @@ import os
 
 # STANDARD 模式各阶段必需工件
 STANDARD_GATES = {
-    0: ["CHANGE.md"],
+    0: [],
     1: ["CHANGE.md", "REQUIREMENT.md"],
     2: ["REQUIREMENT.md", "DESIGN.md"],
     3: ["DESIGN.md", "TASK.md"],

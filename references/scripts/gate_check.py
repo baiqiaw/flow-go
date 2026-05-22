@@ -179,7 +179,7 @@ def main():
         result = check_artifacts(args.stage, specs_dir, args.complexity)
 
         # 可选的 ADR/CONTEXT 附加检查（不阻塞 passed，仅作为 info/warning 报告）
-        _check_adr_context(result, args.stage, args.complexity, args.specs_dir)
+        _check_adr_context(result, args.stage, args.complexity, specs_dir)
 
     print(json.dumps(result, ensure_ascii=False, indent=2))
     sys.exit(0 if result.get("passed", result.get("file_count", 0) <= args.threshold) else 1)

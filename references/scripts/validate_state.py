@@ -221,7 +221,7 @@ def validate(state_path, specs_dir=None, change_id=None):
     # 校验首行包含 STATE
     first_line = content.split("\n")[0]
     if "STATE" not in first_line:
-        missing.append(f"首行不包含 'STATE'：{first_line}")
+        errors.append(f"首行不包含 'STATE'：{first_line}")
 
     # 解析字段
     fields, parse_errors = parse_state(state_path)
@@ -362,7 +362,7 @@ def validate(state_path, specs_dir=None, change_id=None):
                         errors.append(f"一致性不匹配：索引表中 change '{cid}' 阶段为 '{index_stage}'，"
                                       f"但 .specs/{cid}/STATE.md 当前阶段为 '{pc_stage}'")
 
-    passed = len(missing) == 0
+    passed = len(missing) == 0 and len(errors) == 0
     return {
         "passed": passed,
         "missing": missing,
