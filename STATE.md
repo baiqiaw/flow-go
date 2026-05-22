@@ -3,7 +3,7 @@
 ## 活跃 Change
 | change-id | 阶段 | 最后更新 |
 |-----------|------|---------|
-| skills-borrow | 5-审查 | 2026-05-22 |
+| skills-borrow | 6-部署 | 2026-05-22 |
 
 ## Pipeline 待续
 - 无
