@@ -1,7 +1,7 @@
 # STATE — skills-borrow
 
 ## 当前阶段
-6-部署
+7-验收
 
 ## 当前任务
 无（全部完成）
@@ -10,7 +10,7 @@
 无
 
 ## 阶段进度
-无（5-审查完成：0 严重项）
+无（6-部署完成：替代路径，本地skill变更无需部署）
 
 ## worktree_path
 /home/cgh/projects/flow-go/.claude/worktrees/skills-borrow
