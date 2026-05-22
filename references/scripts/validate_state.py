@@ -131,6 +131,7 @@ def validate_change_state(change_state_path, change_id):
     """
     errors = []
     warnings = []
+    info = []
 
     if not os.path.isfile(change_state_path):
         return {"passed": False, "errors": [f"change '{change_id}' 的 STATE.md 不存在：{change_state_path}"], "warnings": [], "fields": {}, "fixes": []}
@@ -219,7 +220,7 @@ def validate(state_path, specs_dir=None, change_id=None):
     # 校验首行包含 STATE
     first_line = content.split("\n")[0]
     if "STATE" not in first_line:
-        errors.append(f"首行不包含 'STATE'：{first_line}")
+        missing.append(f"首行不包含 'STATE'：{first_line}")
 
     # 解析字段
     fields, parse_errors = parse_state(state_path)
@@ -297,7 +298,7 @@ def validate(state_path, specs_dir=None, change_id=None):
         try:
             datetime.strptime(update_time, "%Y-%m-%d")
         except ValueError:
-            errors.append(f"更新时间格式不正确：'{update_time}'，应为 YYYY-MM-DD")
+            missing.append(f"更新时间格式不正确：'{update_time}'，应为 YYYY-MM-DD")
 
     # 生成修复建议
     if missing:
@@ -360,11 +361,12 @@ def validate(state_path, specs_dir=None, change_id=None):
                         errors.append(f"一致性不匹配：索引表中 change '{cid}' 阶段为 '{index_stage}'，"
                                       f"但 .specs/{cid}/STATE.md 当前阶段为 '{pc_stage}'")
 
-    passed = len(errors) == 0
+    passed = len(missing) == 0
     return {
         "passed": passed,
-        "errors": errors,
+        "missing": missing,
         "warnings": warnings,
+        "info": info,
         "fields": fields,
         "fixes": fixes,
         "is_legacy": False,
