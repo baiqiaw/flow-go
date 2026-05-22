@@ -5,7 +5,7 @@
 **输入**：TASK.md 当前任务 + DESIGN.md `## 0` 段 + CONTEXT.md + LESSONS.md
 
 **步骤**：
-1. 读任务定义，有歧义就停下来反问
+1. 读任务定义，有歧义就停下来反问。参考 `e2e_coverage` 确保实现穿透声明的所有层，`independently_verifiable=true` 的任务必须可独立验证
 2. **LESSONS 前置提醒**（AC-7）：grep `.specs/LESSONS.md` 中与当前 change 类型匹配的"待改进领域"条目，输出前置提醒。无匹配则跳过
 3. **策略复用**（可选）：grep `.specs/evolution/strategies.jsonl` 中 task_type 匹配的条目，取 score 最高的 1-2 条作为参考，声明「参考成功策略：{approach}（评分 {score}）」。无匹配则跳过
 3. **前置健康检查**（可选）：运行项目 linter/typecheck/test，确认基线状态。如有失败先记录为"已有问题"

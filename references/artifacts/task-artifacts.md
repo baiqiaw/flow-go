@@ -18,6 +18,8 @@
 - [ ] context_budget 与估算结果一致（若启用 context_budget_mode）
 - [ ] 并行分组已体现在依赖图描述中（若启用 context_budget_mode）
 - [ ] mode 字段已填写（afk/hitl/colab）
+- [ ] e2e_coverage 字段已填写（声明穿透层路径）
+- [ ] independently_verifiable 字段已填写（tracer bullet 声明）
 
 ### SUMMARY.md 自检
 - [ ] 改动文件表已填写（非空）
@@ -50,6 +52,8 @@
   <verify>npm test -- module/NewFeature.test.ts</verify>
   <done>测试通过，功能符合 AC-1</done>
   <depends_on></depends_on>
+  <e2e_coverage>schema → API → 业务逻辑 → 测试</e2e_coverage>
+  <independently_verifiable>true</independently_verifiable>
   <context_budget>small</context_budget>
   <agent_hint>可与其他 small 任务并行执行</agent_hint>
 </task>
@@ -62,6 +66,8 @@
   <verify>pytest tests/test_integration.py -v</verify>
   <done>集成测试通过</done>
   <depends_on>T01</depends_on>
+  <e2e_coverage>API → 修复逻辑 → 回归测试</e2e_coverage>
+  <independently_verifiable>true</independently_verifiable>
   <!-- context_budget 和 agent_hint 为可选字段，不填时由预检环自动估算 -->
 </task>
 
@@ -80,6 +86,14 @@ mode 取值（必填）：
 	  hitl   — 需人工决策/审阅/外部操作
 	  colab  — AI + 人协作（默认）
 	判断原则：有明确 action+done 且无外部依赖 → afk；涉及架构决策/设计审阅/外部服务 → hitl；不确定 → colab
+
+e2e_coverage（必填，垂直切片声明）：
+  用箭头链声明穿透层路径，如 "schema → API → 业务逻辑 → 测试"。
+  纯 setup/teardown 前序任务可写 "公共类型定义（setup 任务，非垂直切片）"。
+
+independently_verifiable（必填，tracer bullet 声明）：
+  true  — 该任务完成后可独立演示/验证（不依赖后续任务）
+  false — 该任务是前序 setup/teardown，不可独立验证
 
 	context_budget 取值（可选，预检环自动填充）：
   small  — 预估 < 2000 token（read_files ≤ 3 + action ≤ 50 字）

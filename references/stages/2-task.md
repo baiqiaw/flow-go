@@ -31,7 +31,7 @@
 	   - **COLAB**（Collaborative）：AI + 人协作完成（默认）
 	   - 标记原则：优先标记为 AFK（减少人工干预）；不确定时标 COLAB
 	   - 并行模式增强：parallel 路由优先将 AFK 任务分配给独立 agent
-3. 每个任务定义 XML 块：id / name / read_files / write_files / action / verify / done / depends_on + 可选的 context_budget / agent_hint
+3. 每个任务定义 XML 块：id / name / read_files / write_files / action / verify / done / depends_on / e2e_coverage / independently_verifiable + 可选的 context_budget / agent_hint
 4. verify 必须是可执行命令（如 `npm test -- xxx` / `pytest xxx`）
 5. **预检环**（配置项 `preflight_check` 控制，默认开启）：
    - 5a 反幻觉预检：验证每个 task 的 `read_files` glob 模式能匹配到真实文件；验证 `verify` 命令格式包含可执行部分
@@ -63,7 +63,8 @@
 - [ ] 并行分组已体现在依赖图描述中（若启用）
 - [ ] 交叉评审报告 6 维全 PASS
 - [ ] worktree 已创建且 worktree_path 已更新（如适用）
-- [ ] 垂直切片检查：每个任务的 action 穿透多层，done 条件包含端到端验证
+- [ ] 垂直切片检查：每个任务有 e2e_coverage 字段（声明穿透层），done 条件包含端到端验证
+- [ ] Tracer bullet 检查：每个任务有 independently_verifiable 字段，优先安排 true 的任务
 - [ ] AFK/HITL 标记检查：每个任务有 mode 属性（afk/hitl/colab）
 
 **决策信号**：
