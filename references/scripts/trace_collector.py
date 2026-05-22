@@ -90,7 +90,7 @@ def read_state(specs_dir):
         return None
     info = {}
     for field in ["当前阶段", "当前任务", "阶段进度"]:
-        m = re.search(rf"## {re.escape(field)}\s*\n-\s*(.+)", content)
+        m = re.search(rf"## {re.escape(field)}\s*\n-?\s*(.+)", content)
         if m:
             info[field] = m.group(1).strip()
     return info

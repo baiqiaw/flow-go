@@ -86,6 +86,14 @@ def parse_state(state_path):
                         fields[current_key] = [cells]
                     else:
                         fields[current_key].append(cells)
+                    continue
+                # 匹配纯文本值（per-change STATE.md 格式：## 标题后跟纯文本）
+                if current_key and line.strip() and not line.startswith("#"):
+                    val = line.strip()
+                    if current_key not in fields:
+                        fields[current_key] = val
+                    else:
+                        fields[current_key] += "," + val
     except (OSError, UnicodeDecodeError) as e:
         return None, [f"无法读取文件：{e}"]
     return fields, []
