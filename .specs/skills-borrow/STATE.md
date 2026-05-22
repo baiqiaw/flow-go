@@ -1,7 +1,7 @@
 # STATE — skills-borrow
 
 ## 当前阶段
-3-开发
+5-审查
 
 ## 当前任务
 无（全部完成）
@@ -10,7 +10,7 @@
 无
 
 ## 阶段进度
-T01-T09 全部完成，交叉评审 2 轮通过
+无（4-测试完成：5轮全覆盖，0 Bug，99.25分/A级）
 
 ## worktree_path
 /home/cgh/projects/flow-go/.claude/worktrees/skills-borrow
