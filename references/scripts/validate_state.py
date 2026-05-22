@@ -205,6 +205,7 @@ def validate(state_path, specs_dir=None, change_id=None):
     """
     errors = []
     warnings = []
+    info = []
 
     # === 项目级 STATE.md 基本校验 ===
     if not os.path.isfile(state_path):

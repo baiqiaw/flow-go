@@ -128,7 +128,6 @@ def main():
                         help="启用 L3 跨 Change 回归检查（需配合 --mode quality-gate）")
     parser.add_argument("--traces", help="traces.jsonl 路径（--enable-l3 时使用）")
     parser.add_argument("--project-dir", help="项目根目录")
-    parser.add_argument("--change-id", help="当前 change-id（用于 ADR/CONTEXT 检查）")
     parser.add_argument("--threshold", type=int, default=5, help="文件数阈值（默认 5）")
     args = parser.parse_args()
     # --complexity 通过 type=lambda s: s.lower() 已自动转为小写
