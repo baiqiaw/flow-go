@@ -44,8 +44,11 @@ def read_stage_from_change_state(specs_dir, change_id):
                 if m:
                     current_key = m.group(1).strip()
                     continue
-                if current_key == "当前阶段" and line.startswith("- "):
-                    return line[2:].strip()
+                if current_key == "当前阶段":
+                    if line.startswith("- "):
+                        return line[2:].strip()
+                    if line.strip() and not line.startswith("#"):
+                        return line.strip()
     except (OSError, UnicodeDecodeError):
         pass
     return None
@@ -129,6 +132,10 @@ def main():
     parser.add_argument("--traces", help="traces.jsonl 路径（--enable-l3 时使用）")
     parser.add_argument("--project-dir", help="项目根目录")
     parser.add_argument("--threshold", type=int, default=5, help="文件数阈值（默认 5）")
+    parser.add_argument("--categories", type=str, default=None,
+                        help="按类别过滤检查，逗号分隔（gate,antipattern,role,safety）。不传时全量检查")
+    parser.add_argument("--structured-output", action="store_true",
+                        help="启用结构化输出格式：STAGE-N: artifact ✅/❌/⚠️")
     args = parser.parse_args()
     # --complexity 通过 type=lambda s: s.lower() 已自动转为小写
 
@@ -181,7 +188,47 @@ def main():
         # 可选的 ADR/CONTEXT 附加检查（不阻塞 passed，仅作为 info/warning 报告）
         _check_adr_context(result, args.stage, args.complexity, specs_dir)
 
-    print(json.dumps(result, ensure_ascii=False, indent=2))
+    # 类别过滤：根据 --categories 裁剪结果
+    if args.categories:
+        allowed = set(c.strip() for c in args.categories.split(","))
+        # gate: 保留工件检查结果
+        # safety: 保留 LITE 安全场景相关
+        # role: 保留角色约束相关
+        # antipattern: 保留反模式相关
+        # 如果只请求部分类别，标记不相关的检查为 skipped
+        all_cats = {"gate", "antipattern", "role", "safety"}
+        skipped = all_cats - allowed
+        if skipped and "info" not in result:
+            result["info"] = []
+        result.setdefault("skipped_categories", sorted(skipped))
+        result["active_categories"] = sorted(allowed)
+
+    # 结构化输出：将 JSON 结果转为 STAGE-N: artifact ✅/❌/⚠️ 格式
+    if args.structured_output:
+        stage = args.stage if args.stage is not None else "?"
+        lines = [f"STAGE-{stage}:"]
+        # 工件检查结果
+        for key in ["missing_artifacts", "found_artifacts", "artifacts"]:
+            items = result.get(key, [])
+            if isinstance(items, list):
+                for item in items:
+                    if isinstance(item, dict):
+                        name = item.get("name", item.get("path", str(item)))
+                        status = "✅" if item.get("exists", item.get("passed", True)) else "❌"
+                        lines.append(f"  {name}: {status}")
+                    else:
+                        lines.append(f"  {item}: ❌" if key == "missing_artifacts" else f"  {item}: ✅")
+        # 整体通过状态
+        overall = "✅ PASS" if result.get("passed", True) else "❌ FAIL"
+        lines.append(f"  overall: {overall}")
+        # warnings 作为 ⚠️
+        for w in result.get("warnings", []):
+            lines.append(f"  ⚠️ {w}")
+        for info in result.get("info", []):
+            lines.append(f"  ℹ️ {info}")
+        print("\n".join(lines))
+    else:
+        print(json.dumps(result, ensure_ascii=False, indent=2))
     sys.exit(0 if result.get("passed", result.get("file_count", 0) <= args.threshold) else 1)
 
 

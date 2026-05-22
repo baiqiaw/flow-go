@@ -33,6 +33,56 @@ RISK_RULES = {
 # 顿悟触发阈值：同一 signature 出现此次数后生成持久洞察
 INSIGHT_THRESHOLD = 3
 
+# ── 架构原则（借鉴 web-design-guidelines 分析）────────────────
+ARCHITECTURE_PRINCIPLES = {
+    "atomic_rules": {
+        "name": "原子化规则",
+        "description": "每条规则可独立执行、独立验证的最小检查单元",
+        "violation_patterns": [
+            r'##\s+[^#\n].*\n(\|.*\n){3,}',  # 大表格内联（应外置）
+            r'^\s*-\s+.{50,}',  # 过长的列表项（应拆分）
+        ],
+        "check_target": ["SKILL.md", "references/"],
+        "advice": "将内联规则拆分为原子化条目，每条有唯一 id，可独立 grep 检查",
+    },
+    "structured_output": {
+        "name": "结构化输出",
+        "description": "key:value 格式的机器可读输出，而非自然语言描述",
+        "violation_patterns": [
+            r'输出.*格式.*[为是].*["“]',  # 自然语言输出格式描述
+        ],
+        "check_target": ["references/scripts/"],
+        "advice": "脚本输出使用 key:value 结构化格式，支持 --structured-output 参数",
+    },
+    "separation_of_concerns": {
+        "name": "关注点分离",
+        "description": "编排逻辑（SKILL.md）与领域知识（references/）独立存放",
+        "violation_patterns": [
+            r'^\|[^|]+\|[^|]+\|[^|]+\|[^|]+\|$',  # 大表格内联在 SKILL.md（应外置）
+        ],
+        "check_target": ["SKILL.md"],
+        "advice": "将领域知识表格和规则外置到 references/，SKILL.md 通过 grep 加载",
+    },
+    "single_responsibility": {
+        "name": "单一职责",
+        "description": "每个文件一个职责，编排文件不含领域知识",
+        "violation_patterns": [
+            r'##\s+(?:闸门|角色|反模式)',  # SKILL.md 中包含领域知识章节
+        ],
+        "check_target": ["SKILL.md"],
+        "advice": "SKILL.md 仅保留流程编排逻辑，领域规则移至对应的 references/ 文件",
+    },
+    "composable_rules": {
+        "name": "可组合规则",
+        "description": "规则可按类别组合执行，支持选择性检查",
+        "violation_patterns": [
+            r'全量检查|全部检查',  # 全量检查描述（应支持按类别过滤）
+        ],
+        "check_target": ["references/scripts/"],
+        "advice": "检查脚本支持 --categories 参数，按类别选择性执行",
+    },
+}
+
 # ── 优先级分级定义 ──────────────────────────────────────────
 # P1-P6 优先级映射条件：key=优先级, value=dict(level, label, condition_check)
 PRIORITY_LEVELS = {
@@ -691,7 +741,7 @@ def _generate_suggestion_hypothesis(cluster, change_id):
 
 
 def suggest(feedback_path, history_path=None, output_path=None):
-    """SUGGEST 模式：从 skill-feedback.jsonl 生成改进假设"""
+    """SUGGEST 模式：从 skill-feedback.jsonl 生成改进假设 + 架构原则检测"""
     feedback_path = Path(feedback_path)
     if not feedback_path.is_file():
         return {"suggested": False, "reason": "skill-feedback.jsonl 不存在"}
@@ -727,6 +777,9 @@ def suggest(feedback_path, history_path=None, output_path=None):
         if ins:
             insights.append(ins)
 
+    # ── 架构原则检测 ──
+    arch_violations = _detect_architecture_violations()
+
     result = {
         "mode": "suggest",
         "processed_feedback_count": len(records),
@@ -736,6 +789,7 @@ def suggest(feedback_path, history_path=None, output_path=None):
         "change_ids": change_ids,
         "hypotheses": hypotheses,
         "insights": insights,
+        "architecture_violations": arch_violations,
         "created_at": datetime.now().isoformat(timespec="seconds"),
     }
 
@@ -746,6 +800,47 @@ def suggest(feedback_path, history_path=None, output_path=None):
         )
 
     return result
+
+
+def _detect_architecture_violations():
+    """扫描 SKILL.md 和 references/ 检测违反架构原则的问题"""
+    violations = []
+    # 确定扫描根目录（脚本位于 references/scripts/）
+    script_dir = Path(__file__).parent
+    skill_root = script_dir.parent  # references/ 的父目录
+
+    for principle_key, principle in ARCHITECTURE_PRINCIPLES.items():
+        for target in principle["check_target"]:
+            target_path = skill_root / target
+            if not target_path.exists():
+                continue
+
+            # 收集目标文件
+            if target_path.is_dir():
+                files = list(target_path.glob("*.md"))
+                files.extend(target_path.glob("*.py"))
+            else:
+                files = [target_path]
+
+            for f in files:
+                try:
+                    content = f.read_text(encoding="utf-8")
+                except (OSError, UnicodeDecodeError):
+                    continue
+
+                for pattern in principle["violation_patterns"]:
+                    matches = re.findall(pattern, content, re.MULTILINE)
+                    if matches:
+                        violations.append({
+                            "principle": principle_key,
+                            "principle_name": principle["name"],
+                            "file": str(f.relative_to(skill_root)),
+                            "match_count": len(matches),
+                            "advice": principle["advice"],
+                            "severity": "suggestion",
+                        })
+
+    return violations
 
 
 # ── CLI 入口 ─────────────────────────────────────────────
