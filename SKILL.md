@@ -416,7 +416,7 @@ mcp__slack__post_message channel="#team" text="✅ CH-001 用户登录功能验�
 - **决策同步检查**：grep 本阶段「决策信号」，逐条检查产出工件是否匹配
   - 有匹配 → 输出「🔄 决策同步：N 条新决策，执行受作用域同步」然后加载 `references/sync-workflow.md` 执行受作用域同步
   - 无匹配 → 跳过
-  - 7-验收阶段：固定加载 `references/sync-workflow.md` 执行全量同步（验收 = 交接里程碑）
+  - **例外——归档/验收已内联同步**：归档流程步骤 9.6 和 7-验收步骤 8 已各自内联执行同步（归档→受作用域同步，验收→全量同步），不依赖此信号检查机制。此处不再重复触发
 - **自动进化触发**（配置项 `evolution_mode` 控制，默认 `auto`，设为 `off` 则跳过全部进化分析）：归档完成后按健康评分走双路径
   - **CAPTURE 路径**（成功经验）：读 `health-history.jsonl` 最近一条，评分 ≥ 8.0 → 执行 `evolution_reflect.py --mode capture --specs-dir .specs/<id> --health-score <分>` → 成功策略存入 `.specs/evolution/strategies.jsonl` → 输出「🏆 策略已捕获：{approach}（评分 {score}）」
   - **FIX 路径**（失败改进）：以下条件满足任一即触发
@@ -454,4 +454,4 @@ mcp__slack__post_message channel="#team" text="✅ CH-001 用户登录功能验�
 - [ ] 新 CHANGE 已自动生成 change-id（如适用）
 - [ ] 闸门前置条件已验证
 - [ ] 角色声明包含红线提醒
-- [ ] 决策同步检查已执行（有信号已触发 / 无信号已跳过）
+- [ ] 决策同步检查已执行（有信号已触发 / 无信号已跳过 / 归档或验收已内联同步）

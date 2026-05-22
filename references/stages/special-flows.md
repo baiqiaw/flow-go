@@ -93,6 +93,7 @@
     - 因假设错误导致的返工是否减少？（回顾本 change 是否有因猜测导致的返工）
     - 澄清问题是否在实现前提出？（回顾需求/设计阶段的提问记录）
     > 三项全 ✅ → flow-go 流程在生效。有 ❌ → 下个 change 重点关注该环节。
+9.6. **受作用域同步**：加载 `references/sync-workflow.md` 执行受作用域同步（仅同步本次归档涉及的文档）。扫描归档工件中的决策记录，将涉及的架构/API/数据库变更同步到 CLAUDE.md / CONTEXT.md / docs/ 对应章节。同步完成后输出摘要：`🔄 同步完成：CLAUDE.md 更新 X 处，CONTEXT.md 更新 Y 处`。如本次归档无决策性变更 → 输出「同步跳过：本次归档无决策性变更」并继续。**如已在 7-验收 步骤 8 执行过全量同步，跳过本步骤**（全量同步已覆盖受作用域同步的范围）
 10. **Git 归档提交**：将所有归档相关变更纳入一次提交
     - (a) `git add STATE.md .specs/archive/ .specs/ARCHIVE-INDEX.md`（归档索引和主状态）
     - (b) `git add .specs/traces.jsonl .specs/health-history.jsonl`（如存在，轨迹和健康记录）
@@ -108,7 +109,7 @@
       - `up to date with 'origin/main'`（不 ahead/behind）
     - (c) 不满足 → 排查遗漏文件，补充 add + commit + push，回到 (b)
 
-**输出**：`.specs/archive/<date>-<id>/` + STATE.md 索引表更新 + `.specs/<id>/STATE.md` 已删除 + git 已 push + working tree clean
+**输出**：`.specs/archive/<date>-<id>/` + STATE.md 索引表更新 + `.specs/<id>/STATE.md` 已删除 + git 已 push + working tree clean + 知识库同步完成
 
 **闸门**：用户确认归档（必须显式确认原因）
 
@@ -125,10 +126,9 @@
 - [ ] worktree 已合并并清理（如适用）
 - [ ] 归档变更已 git commit（STATE.md + archive/ + traces + health + evolution 等）
 - [ ] 已 git push 且 `git status` 显示 `working tree clean` + `up to date with 'origin/main'`
+- [ ] 受作用域同步已执行（加载 sync-workflow.md，输出同步摘要或跳过原因）
 
-**决策信号**：不适用（归档不产生决策，只记录状态）
-
-> 归档完成后，主流程第七步的决策同步检查将加载 `references/sync-workflow.md` 执行 **受作用域同步**（仅同步本次归档涉及的文档）。
+**决策信号**：归档完成触发受作用域同步（步骤 9.6 已内联执行，不依赖 SKILL.md 第七步信号检查）
 
 ---
 
