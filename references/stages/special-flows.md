@@ -88,8 +88,22 @@
 8.1. **PIPELINE.md 状态更新**（如 PIPELINE.md 存在）：将当前归档 change 的状态从 `active` 改为 `completed`
 8.5. **Pipeline 衔接检查**：读取 `.specs/PIPELINE.md`（如存在），找下一个 `pending` change（按优先级排序，依赖已完成）。找到 → 项目级 STATE.md 写入 `Pipeline 待续` 字段 → 输出「📋 Pipeline 下一个：{change-id} — {描述}」→ 询问用户是否立即开始。用户确认 → 走 AC-4 启动流程（清空 Pipeline 待续 → PIPELINE.md 标记 active → 创建目录 → STATE.md 索引表新增该 change 行 → 创建 `.specs/<id>/STATE.md` 初始状态 → 路由到 0-需求）。用户拒绝 → 保留 Pipeline 待续 字段。PIPELINE.md 不存在或无 pending → 跳过
 9. STATE.md 清理：从 STATE.md 索引表移除该 change 行 + 删除 `.specs/<id>/STATE.md`。**注意**：`Pipeline 待续` 字段如步骤 8.5 已写入，则保留不清空
+10. **Git 归档提交**：将所有归档相关变更纳入一次提交
+    - (a) `git add STATE.md .specs/archive/ .specs/ARCHIVE-INDEX.md`（归档索引和主状态）
+    - (b) `git add .specs/traces.jsonl .specs/health-history.jsonl`（如存在，轨迹和健康记录）
+    - (c) `git add .specs/LESSONS.md .specs/evolution/ .specs/PIPELINE.md`（如存在，进化产物和 Pipeline）
+    - (d) `git add .specs/CONTEXT.md .specs/adr/`（如本次归档有更新）
+    - (e) `git status` 检查是否还有未纳入的 `.specs/` 或项目根目录相关文件 → 有则补充 add
+    - (f) `git commit`，消息格式：`archive(<change-id>): 归档完成，N/N AC全PASS，健康评分XX/X级`
+    - **禁止**使用 `git add .` 或 `git add -A`，必须逐项 add 避免纳入无关文件
+11. **Git push + clean 验证**：
+    - (a) `git push`
+    - (b) `git status` — 必须满足以下全部条件才算归档完成：
+      - `working tree clean`（无 staged、unstaged、untracked 文件）
+      - `up to date with 'origin/main'`（不 ahead/behind）
+    - (c) 不满足 → 排查遗漏文件，补充 add + commit + push，回到 (b)
 
-**输出**：`.specs/archive/<date>-<id>/` + STATE.md 索引表更新 + `.specs/<id>/STATE.md` 已删除
+**输出**：`.specs/archive/<date>-<id>/` + STATE.md 索引表更新 + `.specs/<id>/STATE.md` 已删除 + git 已 push + working tree clean
 
 **闸门**：用户确认归档（必须显式确认原因）
 
@@ -104,6 +118,8 @@
 - [ ] Pipeline 衔接已检查（PIPELINE.md 存在时）
 - [ ] STATE.md 已清理（索引表移除该 change 行 + `.specs/<id>/STATE.md` 已删除；Pipeline 待续 保留如有写入）
 - [ ] worktree 已合并并清理（如适用）
+- [ ] 归档变更已 git commit（STATE.md + archive/ + traces + health + evolution 等）
+- [ ] 已 git push 且 `git status` 显示 `working tree clean` + `up to date with 'origin/main'`
 
 **决策信号**：不适用（归档不产生决策，只记录状态）
 

@@ -3,9 +3,9 @@
 > 归档时自动维护，回溯时可选读取。不需要手动编辑。
 
 ## 归档统计
-- 正常归档：9 个
+- 正常归档：10 个
 - 废弃归档：0 个
-- 最近归档：20260522-skills-borrow
+- 最近归档：20260522-simplifier-borrow
 - 最早归档：2026-05-20-data-flywheel
 
 ## 归档清单
@@ -22,6 +22,7 @@
 | 2026-05-21-worktree-isolation | worktree-isolation | 7-验收 | 2026-05-21 | 保留 |
 | 2026-05-21-gate-check-missing-changeid | gate-check-missing-changeid | 3-开发（LITE） | 2026-05-21 | 保留 |
 | 20260522-skills-borrow | skills-borrow | 7-验收 | 2026-05-22 | 保留 |
+| 20260522-simplifier-borrow | simplifier-borrow | 7-验收 | 2026-05-22 | 保留 |
 
 ### 废弃
 | 归档目录 | Change-ID | 废弃原因 | 归档日期 | 保留状态 |
