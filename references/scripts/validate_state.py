@@ -43,6 +43,7 @@ LEGACY_REQUIRED_FIELDS = [
 # === per-change STATE.md 必填字段 ===
 CHANGE_REQUIRED_FIELDS = [
     "当前阶段",
+    "路径模式",
     "当前任务",
     "中断任务",
     "阶段进度",
@@ -53,6 +54,8 @@ VALID_STAGES = [
     "0-需求", "1-设计", "2-任务", "3-开发",
     "4-测试", "5-审查", "6-部署", "7-验收",
 ]
+
+VALID_PATH_MODES = ["完整", "增量", "最短"]
 
 def parse_state(state_path):
     """解析 STATE.md 为字段字典（兼容列表格式和表格格式）"""
@@ -163,6 +166,11 @@ def validate_change_state(change_state_path, change_id):
     if isinstance(stage, str) and stage and stage != "无" and stage not in VALID_STAGES:
         errors.append(f"change '{change_id}' 当前阶段 '{stage}' 不在合法值中：{VALID_STAGES}")
 
+    # 校验路径模式合法
+    path_mode = fields.get("路径模式", "")
+    if isinstance(path_mode, str) and path_mode and path_mode not in VALID_PATH_MODES:
+        errors.append(f"change '{change_id}' 路径模式 '{path_mode}' 不在合法值中：{VALID_PATH_MODES}")
+
     # 校验中断任务和当前任务不重复
     cur_task = fields.get("当前任务", "")
     int_task = fields.get("中断任务", "")
@@ -184,6 +192,7 @@ def validate_change_state(change_state_path, change_id):
         from datetime import date
         defaults = {
             "当前阶段": "无",
+            "路径模式": "完整",
             "当前任务": "无",
             "中断任务": "无",
             "阶段进度": "无",

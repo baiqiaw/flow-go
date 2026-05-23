@@ -125,6 +125,10 @@ def main():
     parser.add_argument("--complexity", type=lambda s: s.lower(),
                         choices=["lite", "standard", "heavy"], default="standard",
                         help="复杂度等级 (lite/standard/heavy，不区分大小写)")
+    parser.add_argument("--path-mode", type=lambda s: s.lower(),
+                        choices=["full", "incremental", "shortest"], default="full",
+                        help="路径模式 (full/incremental/shortest，不区分大小写)。"
+                             "影响经过的阶段和闸门工件列表")
     parser.add_argument("--mode", choices=["blast-radius", "quality-gate", "l1-guard"],
                         help="运行模式")
     parser.add_argument("--enable-l3", action="store_true",
@@ -183,7 +187,7 @@ def main():
                 parser.error("工件检查模式需要 --stage")
         if not specs_dir:
             parser.error("工件检查模式需要 --specs-dir（或 --project-dir + --change-id）")
-        result = check_artifacts(args.stage, specs_dir, args.complexity)
+        result = check_artifacts(args.stage, specs_dir, args.complexity, args.path_mode)
 
         # 可选的 ADR/CONTEXT 附加检查（不阻塞 passed，仅作为 info/warning 报告）
         _check_adr_context(result, args.stage, args.complexity, specs_dir)

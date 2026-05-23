@@ -40,6 +40,28 @@ description: >
 
 ---
 
+## 路径模式阶段转换
+
+路径模式在 0-需求阶段步骤 9 确定后写入 `.specs/<id>/STATE.md` 的 `路径模式` 字段。后续所有阶段转换和闸门检查都依赖此字段。
+
+| 路径模式 | 阶段序列 | 跳过的阶段 | 适用条件 |
+|---------|---------|-----------|---------|
+| 完整 | 0→1→2→3→4→5→6→7 | 无 | 新功能 / 多文件变更 / 架构影响 |
+| 增量 | 0→1→2→3→4→5→7 | 6-部署 | 已有 CI/CD 管线的内部工具 / 非生产环境部署 |
+| 最短 | 0→3→4→7 | 1-设计 / 2-任务 / 5-审查 / 6-部署 | 单文件改动 / 配置调整 / typo 修复 |
+
+**阶段转换规则**（当用户说 "go"/"下一步"/"next" 且当前阶段完成时）：
+1. 从 `.specs/<id>/STATE.md` 读取 `路径模式` 字段
+2. 查上表得到当前路径的阶段序列
+3. 在序列中找到当前阶段的下一阶段 → 路由到该阶段
+4. 当前阶段已是序列末尾（如 7-验收）→ 路由到归档流程
+
+**跳过阶段不执行**：路径模式中跳过的阶段不进入、不加载、不执行闸门检查。闸门检查仅对序列中实际经过的阶段生效。
+
+**路径模式详细定义**：`references/path-modes.md`（含闸门适配规则和工件简化方案）。
+
+---
+
 ## 前置动作 · 用户输入记录
 
 **在执行任何步骤之前，先将当前用户输入追加到 `.specs/<id>/user-inputs.jsonl`**。
@@ -72,7 +94,7 @@ description: >
 3. 执行完整性校验：调用 `python3 references/scripts/validate_state.py --state-file STATE.md --specs-dir .specs/`。脚本不可用时回退到 grep `references/artifacts/meta-artifacts.md` 的「完整性校验」清单。校验不通过 → 输出脚本返回的具体问题，降级为"无状态"模式（等同新项目）。如脚本返回 `fixes` 字段非空 → 额外提示「可自动修复缺失字段，回复"修复"即可」
 4. 校验通过后解析活跃 Change 索引表：
    - **活跃数 = 0**：无活跃 change，后续路由按"无活跃 change"处理
-   - **活跃数 = 1**：自动读 `.specs/<id>/STATE.md` 获取当前阶段/当前任务/中断任务/阶段进度。将 change-id 写入会话上下文供后续阶段使用。**零额外操作**——用户体验与旧格式完全一致
+   - **活跃数 = 1**：自动读 `.specs/<id>/STATE.md` 获取当前阶段/路径模式/当前任务/中断任务/阶段进度。将 change-id 和路径模式写入会话上下文供后续阶段使用。**零额外操作**——用户体验与旧格式完全一致
    - **活跃数 > 1**：列出所有活跃 change（change-id + 阶段），用 AskUserQuestion 让用户选择要操作的 change → 读选中的 `.specs/<id>/STATE.md` → 将 change-id 写入会话上下文
 5. 选定 change 后检查：`中断任务` 非空 → 优先级最高，走回溯流程
 6. Worktree 检查：读取 `.specs/<id>/STATE.md` 的 `worktree_path` 字段。非空 → 检查 worktree 目录是否存在（`test -d <path>`）。存在 → 记录到会话上下文。不存在但路径有记录 → 输出「⚠️ worktree 已丢失：<path>，建议手动恢复或废弃」
@@ -192,7 +214,7 @@ user_input_capture: true
 | `保存` / `save` | 写 PROGRESS.md + 更新 STATE.md | 当前角色 |
 | `进化分析` / `反思一下` / `检查进化` / `进化信号` / `归因` | 运行 evolution_signal + evolution_reflect，展示假设和归因摘要 | 自动 |
 | `进化状态` | 显示进化触发条件状态（健康趋势 / 归因频率 / 历史数据量） | 自动 |
-| `go` / `下一步` / `next` | STATE 有活跃变更 → 读 per-change STATE 获取当前阶段 → 当前阶段下一步；无 → 0-需求 | 自动 |
+| `go` / `下一步` / `next` | STATE 有活跃变更 → 读 per-change STATE 获取当前阶段和路径模式 → 按路径模式阶段转换表确定下一阶段 → 路由到该阶段；当前阶段完成时同样按转换表跳转；无活跃变更 → 0-需求 | 自动 |
 | `/lite` | 强制设置当前 change 复杂度为 LITE，跳转到当前阶段 | 开发员 |
 | `/heavy` | 强制设置当前 change 复杂度为 HEAVY，跳转到当前阶段 | 开发员 |
 | 任何新事物描述（当前无活跃 change） | 0-需求（自动生成 change-id） | 产品经理 |
@@ -234,7 +256,13 @@ user_input_capture: true
 </HARD-GATE>
 
 > 闸门检查规则（含分类标签 gate/safety）见 `references/gate-rules.md` §1-2（grep 加载）。
-> 脚本化验证：`python3 references/scripts/gate_check.py --stage <N> --change-id <id> --specs-dir .specs/<id> --complexity <level> [--categories gate]`
+> 脚本化验证：`python3 references/scripts/gate_check.py --stage <N> --change-id <id> --specs-dir .specs/<id> --complexity <level> --path-mode <full|incremental|shortest> [--categories gate]`
+
+**路径模式适配**：闸门检查必须读取 `.specs/<id>/STATE.md` 的 `路径模式` 字段，按 `references/path-modes.md` 的闸门适配规则执行：
+- **最短路径**：阶段 3 仅需 CHANGE.md（含内联 AC）+ 代码提交（不检查 DESIGN.md / TASK.md）；阶段 4 仅需代码已提交（不检查 SUMMARY.md）；阶段 7 仅需 4-测试通过 + CHANGE.md AC 全部满足（不检查 DEPLOY.md / REVIEW.md）
+- **增量路径**：阶段 1-5 闸门与完整路径相同；阶段 7 简化为不需要 DEPLOY.md
+- **完整路径**：全部闸门与 gate-rules.md 表一致
+- 路径模式中跳过的阶段不执行闸门检查（不进入 = 不检查）
 
 **CONTEXT/ADR 补充检查**（不阻塞闸门通过，仅作为信息报告）：
 - 阶段 0（STANDARD/HEAVY）：如 REQUIREMENT.md 术语表有内容但 `.specs/CONTEXT.md` 不存在 → 输出提示「建议创建 CONTEXT.md 记录项目术语」
@@ -264,6 +292,7 @@ Handoff 检查在**首次阶段转换**时执行，验证上游上下文是否�
 ```
 ✅ 路由：<阶段名>
 ✅ Change-ID：<id>（新需求场景尚未生成时写"待生成"）
+✅ 路径模式：<完整 / 增量 / 最短>（新需求时写"待确定"）
 ✅ 复杂度：<LITE / STANDARD / HEAVY>
 ✅ 当前角色：<角色名>
 ✅ 角色红线：<一句话提醒该角色的禁止事项>
@@ -404,7 +433,7 @@ mcp__slack__post_message channel="#team" text="✅ CH-001 用户登录功能验�
 阶段完成（或产出工件）后，更新状态文件：
 
 - **阶段内高频更新**（阶段进度、当前任务）：写入 `.specs/<change-id>/STATE.md` 的对应字段
-- **阶段转换**：写入 `.specs/<change-id>/STATE.md` 的当前阶段字段 + 更新 STATE.md 索引表中该 change 的阶段和最后更新列
+- **阶段转换**：写入 `.specs/<change-id>/STATE.md` 的当前阶段字段 + 更新 STATE.md 索引表中该 change 的阶段和最后更新列。**下一阶段由路径模式决定**（查本文件「路径模式阶段转换」表的阶段序列），不是固定 +1
 - **worktree 追踪**：worktree 创建时，per-change STATE.md 的 `worktree_path` 写入路径值。归档/废弃清理后，`worktree_path` 清为 `无`
 - **启动新 change**：创建 `.specs/<id>/STATE.md` + 在 STATE.md 索引表添加新行
 - **归档**：从 STATE.md 索引表移除该 change 行 + 删除 `.specs/<id>/STATE.md`（归档/废弃流程自身步骤中完成，此处不再重复）
@@ -459,7 +488,8 @@ mcp__slack__post_message channel="#team" text="✅ CH-001 用户登录功能验�
 
 - [ ] 已读 STATE.md（如果存在）
 - [ ] 已按路由表匹配意图
+- [ ] 已读取路径模式（来自 `.specs/<id>/STATE.md` 的 `路径模式` 字段，新需求时为"待确定"）
 - [ ] 新 CHANGE 已自动生成 change-id（如适用）
-- [ ] 闸门前置条件已验证
+- [ ] 闸门前置条件已验证（按路径模式适配的闸门规则）
 - [ ] 角色声明包含红线提醒
 - [ ] 决策同步检查已执行（有信号已触发 / 无信号已跳过 / 归档或验收已内联同步）

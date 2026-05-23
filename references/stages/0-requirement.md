@@ -79,7 +79,10 @@
    - [ ] 影响面字段已填写（非空）
    - 自检不通过 → 修复后自检；自检通过 → dispatch 交叉评审子代理
 8. 交叉评审（独立子代理，全新上下文）：grep `references/cross-review-matrix.md` 获取矩阵 A（文档评审）定义和子代理 prompt 模板。按模板构造子代理 prompt（传入工件：CHANGE.md + REQUIREMENT.md，上游：用户原始输入 + CONTEXT.md）。子代理输出评审报告到 `<change-id>-REVIEW.md`。任一维度 FAIL → 修文档 → 重新调用子代理重评（无轮数限制，文档不能偏）。6 维全 PASS → 继续。子代理输出异常时按 cross-review-matrix.md 失败处理策略执行
-9. 路径建议：grep `references/path-modes.md` 获取三种模式定义。根据需求特征（改动文件数、架构影响、部署环境）建议完整/增量/最短路径，附判断理由。用户确认或覆盖路径选择
+9. 路径建议：grep `references/path-modes.md` 获取三种模式定义。根据需求特征（改动文件数、架构影响、部署环境）建议完整/增量/最短路径，附判断理由。用户确认或覆盖路径选择后：
+   - (a) 将路径模式写入 CHANGE.md 的 `路径建议` 章节：`完整 / 增量 / 最短，理由：<...>`
+   - (b) 将路径模式写入 `.specs/<change-id>/STATE.md` 的 `路径模式` 字段：`完整` / `增量` / `最短`（三选一）
+   - (c) 将路径模式写入会话上下文，供后续阶段转换和闸门检查使用
 
 **输出**：`.specs/<id>/CHANGE.md` + `.specs/<id>/REQUIREMENT.md` + `.specs/<id>/<change-id>-REVIEW.md` + `.specs/PIPELINE.md`（如触发拆分）
 
@@ -93,6 +96,7 @@
 - [ ] 无实现细节（"用 Redux"不该出现在这里）
 - [ ] change-id 已声明
 - [ ] 交叉评审报告 6 维全 PASS（独立子代理产出）
+- [ ] 路径模式已写入 STATE.md（完整/增量/最短，非空）
 
 **决策信号**（满足任一则触发知识库受作用域同步，详见 `references/sync-workflow.md`）：
 - 范围排除有实际排除项（非占位符）

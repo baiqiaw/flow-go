@@ -7,6 +7,8 @@
 
 ## 1. 闸门检查规则 [gate]
 
+### 1.1 完整路径闸门（默认）
+
 | 进入阶段 | 必须存在（STANDARD/HEAVY） | LITE 简化闸门 | 缺失时 |
 |---|---|---|---|
 | 0-需求 | 无 | 同 STANDARD | 直接进 |
@@ -18,7 +20,32 @@
 | 6-部署 | REVIEW.md（严重项经循环评审确认 = 0） | LITE 跳过此阶段 | 提示先跑 5-审查 |
 | 7-验收 | DEPLOY.md + 全部工件 | 4-测试通过 + CHANGE.md AC 全部满足 | 提示先跑 6-部署 |
 
-**闸门脚本化验证**：`python3 references/scripts/gate_check.py --stage <N> --change-id <id> --specs-dir .specs/<id> --complexity <level> [--categories gate]`
+### 1.2 最短路径闸门（0→3→4→7）
+
+跳过阶段 1-设计 / 2-任务 / 5-审查 / 6-部署。跳过的阶段不进入、不检查闸门。
+
+| 进入阶段 | 必须存在 | 说明 |
+|---|---|---|
+| 0-需求 | 无 | 与完整路径相同 |
+| 3-开发 | CHANGE.md（含内联 AC）+ 代码提交 | 不检查 DESIGN.md / TASK.md。AC 内联在 CHANGE.md 中 |
+| 4-测试 | 代码已提交 | 不检查 SUMMARY.md |
+| 7-验收 | 4-测试通过 + CHANGE.md AC 全部满足 | 不检查 DEPLOY.md / REVIEW.md |
+
+### 1.3 增量路径闸门（0→1→2→3→4→5→7）
+
+跳过阶段 6-部署。
+
+| 进入阶段 | 必须存在（STANDARD/HEAVY） | LITE 简化闸门 | 缺失时 |
+|---|---|---|---|
+| 0-需求 | 无 | 同 STANDARD | 直接进 |
+| 1-设计 | 同完整路径 | LITE 跳过此阶段 | 提示先跑 0-需求 |
+| 2-任务 | 同完整路径 | LITE 跳过此阶段 | 提示先跑 1-设计 |
+| 3-开发 | 同完整路径 | CHANGE.md（含内联 AC） | 提示先跑 2-任务 |
+| 4-测试 | 同完整路径 | 代码已提交 | 提示先跑 3-开发 |
+| 5-审查 | 同完整路径 | LITE 跳过此阶段 | 提示先跑 4-测试 |
+| 7-验收 | 全部工件（不需要 DEPLOY.md） | 4-测试通过 + CHANGE.md AC 全部满足 | 提示先跑 5-审查 |
+
+**闸门脚本化验证**：`python3 references/scripts/gate_check.py --stage <N> --change-id <id> --specs-dir .specs/<id> --complexity <level> --path-mode <full|incremental|shortest> [--categories gate]`
 
 ---
 

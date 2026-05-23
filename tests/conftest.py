@@ -25,8 +25,8 @@ def tmp_project(tmp_path):
     specs_dir = tmp_path / ".specs" / "TEST-001"
     specs_dir.mkdir(parents=True)
     (specs_dir / "STATE.md").write_text(
-        "# STATE — TEST-001\n\n## 当前阶段\n3-开发\n\n## 当前任务\nT01\n"
-        "## 中断任务\n无\n\n## 阶段进度\n无\n\n## 更新时间\n2026-05-23\n",
+        "# STATE — TEST-001\n\n## 当前阶段\n3-开发\n\n## 路径模式\n完整\n\n"
+        "## 当前任务\nT01\n\n## 中断任务\n无\n\n## 阶段进度\n无\n\n## 更新时间\n2026-05-23\n",
         encoding="utf-8",
     )
     (tmp_path / "STATE.md").write_text(
