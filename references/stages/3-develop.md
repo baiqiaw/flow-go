@@ -8,7 +8,7 @@
 1. 读任务定义，有歧义就停下来反问。参考 `e2e_coverage` 确保实现穿透声明的所有层，`independently_verifiable=true` 的任务必须可独立验证
 2. **LESSONS 前置提醒**（AC-7）：grep `.specs/LESSONS.md` 中与当前 change 类型匹配的"待改进领域"条目，输出前置提醒。无匹配则跳过
 3. **策略复用**（可选）：grep `.specs/evolution/strategies.jsonl` 中 task_type 匹配的条目，取 score 最高的 1-2 条作为参考，声明「参考成功策略：{approach}（评分 {score}）」。无匹配则跳过
-3. **前置健康检查**（可选）：运行项目 linter/typecheck/test，确认基线状态。如有失败先记录为"已有问题"
+3. **前置健康检查**：运行项目 linter/typecheck/test，确认基线状态。**任何失败必须先修复再继续开发**——不区分"是否本次变更导致"，全部视为阻塞项
 4. grep 沿用既有抽象：HTTP 请求 / 日期格式化 / 状态管理等，找到就用
 5. 扫 LESSONS.md + `.lessons.jsonl`（如存在）：用任务关键词 grep，命中的条目声明"差异是 X"
 6. **锁检查**：读取 `.specs/<id>/.lock`（如存在），检查 `task_id` 是否为当前任务 — 非当前任务则阻止并输出「🔒 任务 {id} 正在由 {agent_id} 执行」；锁检查通过后写入 `.specs/<id>/.lock`（JSON：task_id + files 列表 + agent_id + timestamp）。.lock 不存在则直接创建
@@ -71,7 +71,7 @@
    - 清理：删除抛弃型原型/harness
    - 提交消息包含正确的假设："原因是 X，通过 Y 修复"
    - 事后分析："什么能防止这个 bug 再次出现？"→ 如涉及架构变更，建议后续重构
-9. 跑 verify：贴出真实命令输出，未通过不标记完成
+9. 跑 verify：贴出真实命令输出。**verify 必须全部通过（0 失败）**——不区分失败来源，任何测试失败都是阻塞项，禁止以"不是本次变更导致"为由绕过。未通过不标记完成
 9. 提交前 diff 边界检查：`git diff --name-only` vs TASK 的 write_files，越界则停下
 10. 写 SUMMARY（含交叉评审章节）
 11. **锁释放**：确认 SUMMARY.md 已写入后删除 `.specs/<id>/.lock`
@@ -99,7 +99,7 @@
 
 **入口条件**：DESIGN.md + TASK.md（含 verify）+ `<change-id>-REVIEW.md`（任务评审 PASS）存在；指定任务时验证该任务存在且 depends_on 已完成
 
-**完成条件**：verify 通过 + 交叉评审 6 维全 PASS + SUMMARY 完成
+**完成条件**：verify 通过（0 失败） + 交叉评审 6 维全 PASS + SUMMARY 完成 + 代码已提交
 
 **自检**：
 - [ ] 锁文件已清理（SUMMARY 写完后 .lock 不存在）

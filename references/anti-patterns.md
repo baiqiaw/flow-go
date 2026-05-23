@@ -44,6 +44,8 @@
 | [dev-03-fake-verify] verify 输出造假 | 贴"通过"而非真实命令输出，掩盖失败 | 贴真实命令输出，未通过不标记完成 |
 | [dev-04-reinvent-abstraction] 不沿用既有抽象 | 每次重写 HTTP 请求/日期格式化，增加维护成本 | grep 沿用既有抽象，找到就用 |
 | [dev-05-vague-summary] SUMMARY 复制粘贴 DESIGN 描述 | "实现了用户模块"含糊不清，无法验证实际改动 | 写具体：改了哪个文件、哪个函数、怎么验证、哪些沿用 |
+| [dev-06-bypass-unrelated-failures] 以"不是本次变更"绕过测试失败 | 非本次变更导致的测试失败被标记为"已有问题"跳过，遗留 bug | **任何测试失败都是阻塞项**，不区分失败来源，全部必须修复后才能继续 |
+| [dev-07-complete-without-commit] 未提交代码就宣布开发完成 | 代码未 commit + SUMMARY 未写就说开发完成，下一阶段门禁拦截后回退 | 完成条件必须包含：verify 0 失败 + SUMMARY 完成 + 交叉评审 PASS + **代码已提交**，缺一不可 |
 
 ## 4-测试 反面模式
 

@@ -6,7 +6,9 @@
   - complexity（LITE/STANDARD/HEAVY）：影响闸门严格程度
   - path_mode（full/incremental/shortest）：影响经过的阶段和闸门工件列表
 """
+import glob
 import os
+import subprocess
 
 
 # ── 完整路径（默认）各阶段必需工件 ──
@@ -104,7 +106,7 @@ def _get_gate_table(complexity, path_mode):
             return STANDARD_GATES
 
 
-def check_artifacts(stage, specs_dir, complexity="standard", path_mode="full"):
+def check_artifacts(stage, specs_dir, complexity="standard", path_mode="full", project_dir=None):
     """工件检查模式
 
     Args:
@@ -112,6 +114,7 @@ def check_artifacts(stage, specs_dir, complexity="standard", path_mode="full"):
         specs_dir: .specs/<change-id> 目录路径
         complexity: LITE/standard/heavy
         path_mode: full/incremental/shortest
+        project_dir: 项目根目录（可选，用于 git 状态检查）
     """
     gates = _get_gate_table(complexity, path_mode)
     required = gates.get(stage, [])
@@ -149,6 +152,39 @@ def check_artifacts(stage, specs_dir, complexity="standard", path_mode="full"):
         if not os.path.isfile(test_path):
             wlabel = "最短路径" if path_mode == "shortest" else "LITE"
             warnings.append(f"{wlabel} 7-验收：TEST.md 不存在，无法确认测试通过")
+
+    # ── 阶段 4 特殊检查：代码已提交 + SUMMARY.md ──
+    if stage == 4:
+        # 检查 SUMMARY.md（STANDARD/HEAVY，完整/增量路径）
+        need_summary = (
+            complexity in ("standard", "heavy")
+            and path_mode in ("full", "incremental")
+        )
+        if need_summary:
+            summary_files = glob.glob(os.path.join(specs_dir, "*-SUMMARY.md"))
+            if not summary_files:
+                missing.append("*-SUMMARY.md（开发阶段未产出任何任务摘要）")
+
+        # 检查代码已提交（git diff HEAD）
+        if project_dir and os.path.isdir(os.path.join(project_dir, ".git")):
+            try:
+                proc = subprocess.run(
+                    ["git", "diff", "--name-only", "HEAD"],
+                    cwd=project_dir,
+                    capture_output=True, text=True, timeout=10,
+                )
+                changed = [f for f in proc.stdout.strip().split("\n") if f]
+                if changed:
+                    missing.append(
+                        f"代码未提交（{len(changed)} 个文件有未提交变更：{', '.join(changed[:3])}）"
+                    )
+            except (subprocess.TimeoutExpired, FileNotFoundError):
+                warnings.append("无法检查 git 提交状态")
+
+        # 检查是否有未完成的任务（PROGRESS 文件残留）
+        progress_files = glob.glob(os.path.join(specs_dir, "*-PROGRESS.md"))
+        if progress_files:
+            missing.append(f"存在未完成任务（{len(progress_files)} 个 PROGRESS 文件）")
 
     return {
         "passed": len(missing) == 0,

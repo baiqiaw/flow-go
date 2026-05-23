@@ -187,7 +187,7 @@ def main():
                 parser.error("工件检查模式需要 --stage")
         if not specs_dir:
             parser.error("工件检查模式需要 --specs-dir（或 --project-dir + --change-id）")
-        result = check_artifacts(args.stage, specs_dir, args.complexity, args.path_mode)
+        result = check_artifacts(args.stage, specs_dir, args.complexity, args.path_mode, project_dir=args.project_dir)
 
         # 可选的 ADR/CONTEXT 附加检查（不阻塞 passed，仅作为 info/warning 报告）
         _check_adr_context(result, args.stage, args.complexity, specs_dir)
