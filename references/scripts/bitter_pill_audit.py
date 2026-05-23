@@ -142,7 +142,7 @@ def scan_skill_dir(skill_dir):
     return files_to_scan
 
 
-def format_markdown(results):
+def format_markdown(results, skill_dir="."):
     """格式化为 BITTER-PILL.md"""
     lines = ["# BITTER-PILL 审计报告\n"]
     lines.append("| 分类 | 规则文本 | 来源 | 判定理由 |")
@@ -160,7 +160,7 @@ def format_markdown(results):
         lines.append(f"\n## {category_name}\n")
         for r in group:
             text_short = r["text"][:80] + ("..." if len(r["text"]) > 80 else "")
-            source = os.path.relpath(r["source"])
+            source = os.path.relpath(r["source"], skill_dir)
             lines.append(f"- [{category_name}] `{text_short}`")
             lines.append(f"  - 来源: {source}")
             lines.append(f"  - 理由: {r['reason']}")
@@ -168,7 +168,7 @@ def format_markdown(results):
     return "\n".join(lines)
 
 
-def format_text(results):
+def format_text(results, skill_dir="."):
     """格式化为可读的纯文本报告"""
     keep = [r for r in results if r["category"] == "KEEP"]
     review = [r for r in results if r["category"] == "REVIEW"]
@@ -192,7 +192,7 @@ def format_text(results):
         lines.append(f"{category_name} ({len(group)} 条)")
         lines.append("-" * 60)
         for i, r in enumerate(group, 1):
-            source = os.path.relpath(r["source"])
+            source = os.path.relpath(r["source"], skill_dir)
             lines.append(f"  [{i}] {r['text']}")
             lines.append(f"      来源: {source}")
             lines.append(f"      理由: {r['reason']}")
@@ -232,10 +232,10 @@ def main():
     if args.format == "json":
         output = json.dumps(all_results, ensure_ascii=False, indent=2)
     elif args.format == "text":
-        output = format_text(all_results)
+        output = format_text(all_results, args.skill_dir)
     else:
         # markdown（向后兼容）
-        output = format_markdown(all_results)
+        output = format_markdown(all_results, args.skill_dir)
 
     if args.output:
         with open(args.output, "w", encoding="utf-8") as f:

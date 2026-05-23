@@ -805,9 +805,9 @@ def suggest(feedback_path, history_path=None, output_path=None):
 def _detect_architecture_violations():
     """扫描 SKILL.md 和 references/ 检测违反架构原则的问题"""
     violations = []
-    # 确定扫描根目录（脚本位于 references/scripts/）
-    script_dir = Path(__file__).parent
-    skill_root = script_dir.parent  # references/ 的父目录
+    # 确定扫描根目录
+    from _path_utils import resolve_skill_dir
+    skill_root = Path(resolve_skill_dir())
 
     for principle_key, principle in ARCHITECTURE_PRINCIPLES.items():
         for target in principle["check_target"]:

@@ -79,7 +79,8 @@ def read_file(path):
 
 
 def _project_root(specs_dir):
-    return os.path.dirname(os.path.dirname(os.path.abspath(specs_dir)))
+    from _path_utils import resolve_project_root
+    return resolve_project_root(specs_dir)
 
 
 def read_state(specs_dir):

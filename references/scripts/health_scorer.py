@@ -462,6 +462,8 @@ def main():
     parser.add_argument("--format", choices=["markdown", "json"], default="markdown")
     parser.add_argument("--test-score", action="store_true",
                         help="计算测试阶段专属健康评分（5 维）")
+    parser.add_argument("--history", help="health-history.jsonl 路径（默认 .specs 同级目录）")
+    parser.add_argument("--specs-dir", help=".specs/<id> 目录（用于推导 history 默认路径）")
     args = parser.parse_args()
 
     source = open(args.input, encoding="utf-8") if args.input else sys.stdin
@@ -491,7 +493,8 @@ def main():
 
     # 趋势追踪：追加到 health-history.jsonl
     try:
-        hp = os.environ.get("FLOWGO_HISTORY", "health-history.jsonl")
+        from _path_utils import resolve_history_path
+        hp = args.history or resolve_history_path(args.specs_dir)
         previous = _read_previous_score(hp)
         entry = json.dumps({
             "ts": datetime.now(timezone.utc).isoformat(),

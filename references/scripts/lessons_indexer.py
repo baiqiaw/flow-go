@@ -88,7 +88,7 @@ def main():
             print(f"未找到匹配 '{args.search}' 的条目")
         return
 
-    output_path = args.output or ".lessons.jsonl"
+    output_path = args.output or os.path.join(os.path.dirname(os.path.abspath(args.input)), ".lessons.jsonl")
     with open(output_path, "w", encoding="utf-8") as f:
         for e in entries:
             f.write(json.dumps(e, ensure_ascii=False) + "\n")

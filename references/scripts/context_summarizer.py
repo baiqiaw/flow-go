@@ -66,7 +66,8 @@ def read_file(path):
 
 
 def infer_skill_dir():
-    return os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from _path_utils import resolve_skill_dir
+    return resolve_skill_dir()
 
 
 def parse_requirements_table(stage_content):
