@@ -422,9 +422,10 @@ mcp__slack__post_message channel="#team" text="✅ CH-001 用户登录功能验�
   - **FIX 路径**（失败改进）：以下条件满足任一即触发
     1. 连续 3 个 Change 健康评分下降（读 `health-history.jsonl` 最近 3 条）
     2. 同一归因标签在最近 5 个 Change 中出现 ≥3 次（读 `.specs/evolution/` 下的信号历史）
+    3. **首次进化**：`health-history.jsonl` 不存在或条目 < 3，且 `evolution_signal.py` 检测到 ≥1 个强信号 → 输出「🆕 首次进化：{信号摘要}」→ 直接执行 FIX 流程（跳过常规门槛）
   - FIX 触发时 → 输出「🧬 进化信号已触发：{原因}，正在运行进化分析」→ 执行 `evolution_signal.py` → `evolution_reflect.py --mode reflect` → 展示假设和归因摘要
   - 有顿悟时 → 额外输出「💡 顿悟：{root_cause}（已出现 N 次）→ 建议：{advice}」，请用户确认是否写入 LESSONS.md
-  - **BITTER PILL 路径**（规则自审计）：归档后自动执行 `python3 references/scripts/bitter_pill_audit.py --skill-dir <flow-go skill 目录> --output .specs/<id>/BITTER-PILL.md` → 产出 KEEP/REVIEW/CANDIDATE 审计报告 → CANDIDATE 项需用户逐条确认 → 输出「💊 苦丸审计完成：KEEP N / REVIEW N / CANDIDATE N」
+  - **BITTER PILL 路径**（规则自审计）：归档后自动执行 `python3 references/scripts/bitter_pill_audit.py --output .specs/<id>/BITTER-PILL.md`（`--skill-dir` 可选，默认自动发现）→ 产出 KEEP/REVIEW/CANDIDATE 审计报告 → CANDIDATE 项需用户逐条确认 → 输出「💊 苦丸审计完成：KEEP N / REVIEW N / CANDIDATE N」
   - **SUGGEST 路径**（改进建议，归档后触发，与 CAPTURE/FIX 同级）：
     - 触发条件：`.specs/evolution/skill-feedback.jsonl` 存在且含 `processed=false` 的条目
     - 路径行为：
@@ -441,6 +442,13 @@ mcp__slack__post_message channel="#team" text="✅ CH-001 用户登录功能验�
       3. 建议增加新的 Skill 链式调用白名单条目
       4. 建议绕过 STATE.md 状态管理直接操作文件
 - **飞轮巡检**（手动触发：`飞轮巡检` / `飞轮报告` / `周报`；周期触发：`/loop 7d "运行 flow-go 飞轮巡检"`）：
+- **轻量进化检查**（每个阶段完成时自动执行，不依赖归档）：
+  - 从本阶段工件中检测即时信号：
+    - `user_correction`：用户在阶段内明确纠正了输出或行为（如"不对""改一下""应该是"）
+    - `gate_blocked`：闸门检查未通过被阻断
+  - 检测到任一 → 输出「⚡ 即时信号：{类型} → 建议：{advice}」
+  - 不写文件、不调脚本、纯文本输出
+  - 无信号 → 静默跳过
   1. 运行 `gap_analyzer.py` → 输出 Gap 报告
   2. 运行 `health_calibration.py` → 输出校准报告（样本 ≥ `flywheel_min_samples` 时）
   3. 检查跨 Change 聚合顿悟 → 复用 `evolution_reflect.py` 写入逻辑

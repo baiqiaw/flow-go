@@ -4,6 +4,7 @@
 """
 import os
 import sys
+from pathlib import Path
 
 
 def resolve_project_root(specs_dir: str) -> str:
@@ -31,6 +32,43 @@ def resolve_skill_dir() -> str:
     """
     scripts_dir = os.path.dirname(os.path.abspath(__file__))
     return os.path.dirname(os.path.dirname(scripts_dir))  # references/scripts/ → skill root
+
+
+def resolve_skill_dir_for_audit() -> str:
+    """BITTER PILL 专用：多级查找 skill 根目录
+
+    查找优先级：
+    1. 从脚本自身位置推导（resolve_skill_dir）
+    2. 从项目根目录查找 SKILL.md
+    3. 从 FLOWGO_SKILL_DIR 环境变量
+
+    每级查找都验证目标目录包含 SKILL.md。
+
+    返回：
+        skill 根目录的绝对路径
+    """
+    # 1. 从脚本位置推导
+    local = resolve_skill_dir()
+    if (Path(local) / "SKILL.md").exists():
+        return local
+
+    # 2. 从 CWD 向上查找项目根（包含 .specs/ 或 SKILL.md 的目录）
+    current = Path.cwd()
+    for parent in [current, *current.parents]:
+        if (parent / "SKILL.md").exists():
+            return str(parent)
+        if (parent / ".specs").is_dir():
+            # 项目根可能不是 skill 根，但 SKILL.md 可能在项目根
+            if (parent / "SKILL.md").exists():
+                return str(parent)
+
+    # 3. 环境变量
+    env_val = os.environ.get("FLOWGO_SKILL_DIR")
+    if env_val and Path(env_val).exists() and (Path(env_val) / "SKILL.md").exists():
+        return env_val
+
+    # 回退到脚本位置推导（即使 SKILL.md 不存在，也比报错好）
+    return local
 
 
 def resolve_history_path(specs_dir: str = None) -> str:

@@ -118,6 +118,16 @@ def _extract_review_rework(specs_dir):
     if not round_matches:
         # 备选：匹配"第 N 轮"
         round_matches = re.findall(r'第\s*(\d+)\s*轮', content)
+    if not round_matches:
+        # 模糊匹配 fallback：返工/重做/评审未通过/多次评审
+        fuzzy = re.findall(r'(?:返工|重做|评审未通过|review.*?fail|评审.*?\s*(\d+)\s*次)', content, re.I)
+        for f in fuzzy:
+            val = f if isinstance(f, str) else f[0]
+            num = re.search(r'(\d+)', val) if val else None
+            if num:
+                round_matches.append(num.group(1))
+            elif '返工' in val or '重做' in val or '未通过' in val:
+                round_matches.append('2')  # 返工至少 2 轮
     evidence = []
     for r in round_matches:
         if int(r) >= 2:
@@ -141,6 +151,10 @@ def _extract_test_repeated(specs_dir):
         if rounds and int(rounds.group(1)) >= 2:
             title = block.split('\n')[0][:60]
             evidence.append(f"Bug 反复出现: {title}")
+    if not evidence:
+        # 模糊匹配 fallback：反复/多次/重复 + bug/缺陷/失败
+        fuzzy = re.findall(r'(?:反复|多次|重复).{0,10}(?:bug|缺陷|失败|error)', content, re.I)
+        evidence.extend(f"模糊检测到重复 Bug: {m[:60]}" for m in fuzzy[:3])
     return evidence[:3]
 
 
@@ -166,6 +180,10 @@ def _extract_gate_blocked(specs_dir):
     if re.search(r'(?:闸门|gate|blocked|阻断|未通过)', content, re.I):
         matches = re.findall(r'.*(?:闸门|gate|blocked|阻断|未通过).*', content, re.I)
         evidence.extend(matches[:3])
+    if not evidence:
+        # 模糊匹配 fallback：前置条件/检查不满足/条件不通过
+        fuzzy = re.findall(r'.*(?:前置条件|检查.*?不满足|条件.*?不通过|被拦截).*', content, re.I)
+        evidence.extend(fuzzy[:3])
     return evidence
 
 
@@ -218,6 +236,11 @@ def _extract_similar_error(specs_dir):
     for kw in all_kw:
         if kw.lower() in test_content.lower():
             evidence.append(f"TEST.md 包含 LESSONS 已有教训关键词: {kw}")
+    if not evidence:
+        # 模糊匹配 fallback：同类/类似/再次出现 + LESSONS 中的错误关键词
+        fuzzy_kw = re.findall(r'(?:同类|类似|再次|repeat|similar)', test_content, re.I)
+        if fuzzy_kw and all_kw:
+            evidence.append(f"模糊检测到重复错误模式（TEST.md 含 {len(fuzzy_kw)} 个重复标记）")
     return evidence[:3]
 
 

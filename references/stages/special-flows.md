@@ -77,8 +77,23 @@
 4. 写归档记录：在 spec 目录下创建归档文件
    - 已到 7-验收且 UAT 通过 → UAT.md 已有归档段，无需额外文件
    - 未到 7-验收 → 创建 ARCHIVE.md（见 `artifacts/spec-artifacts.md`）
+4.3. **健康评分自动计算**：从 `.specs/<id>/` 工件自动提取 metrics 并调用 health_scorer，无需手动构造 JSON
+   - 提取规则：
+     - `ac_total/ac_passed`：从 TEST.md 的 AC 表格统计（`| AC-` 行数 = total，`✅` 行数 = passed）
+     - `test_rounds_completed/skipped`：从 TEST.md 统计
+     - `review_rounds`：从 REVIEW.md 的 `评审轮次` 字段读取，无此字段默认 1
+     - `code_lines_added/removed`：从 SUMMARY.md 的 `改动文件` 章节提取
+     - `boundary_violations`：从 REVIEW.md 的 `范围控制` 维度统计，无违规 = 0
+     - `hallucination_flags`：从 REVIEW.md 的 `幻觉标记` 统计，无标记 = 0
+     - `artifacts_complete`：扫描 `.specs/<id>/` 下实际存在的工件文件名列表
+     - `change_id`：当前 change-id
+   - 构造 metrics JSON 写入临时文件 → 执行 `python3 references/scripts/health_scorer.py <metrics-file> --specs-dir .specs/<id>`
+   - 评分结果自动追加到 health-history.jsonl（health_scorer 内建功能）
+   - 将 composite 评分记入会话上下文，供后续 CAPTURE/FIX 判断使用
+   - 脚本不可用或提取失败 → 输出警告，composite 设为 null，不阻塞归档
 4.5. 轨迹采集：执行 `python3 references/scripts/trace_collector.py --specs-dir .specs/<id> --change-id <id>`，生成 `.specs/<id>/TRACE.md` 和追加 `.specs/traces.jsonl`。采集失败不阻塞归档（输出警告继续执行）
 4.6. **进化信号自动写入 LESSONS**（AC-6）：执行 `python3 references/scripts/evolution_signal.py --specs-dir .specs/<id> --write-lessons`，将 strong_signals 格式化写入 `.specs/LESSONS.md` 的"待改进领域"章节。无 strong_signals 时输出提示并跳过
+   - **首次进化检测**：如 `health-history.jsonl` 不存在或条目 < 3，且 evolution_signal 检测到 ≥1 个强信号 → 输出「🆕 首次进化：基于首个 change 的信号分析，将在自动进化步骤中触发 FIX 路径」
 4.6b. **热修反馈分析**（可选）：如 `.specs/<id>/user-inputs.jsonl` 存在且行数 > 5 → 运行 `python3 references/scripts/feedback_classifier.py --specs-dir .specs/<id> --complexity LITE`。有 skill 反馈 → 追加到 `.specs/evolution/skill-feedback.jsonl`，输出「🔥 热修反馈已捕获：skill N 条」。行数 ≤ 5 时跳过
 5. LESSONS 提名：扫已有 SUMMARY 和 PROGRESS，符合提名条件的入库
 6. 临时文件清理：删除 spec 目录下所有 `*-PROGRESS.md`
@@ -118,6 +133,9 @@
 - [ ] 已有工件已盘点
 - [ ] 归档原因已记录
 - [ ] 轨迹已采集（TRACE.md 已生成，traces.jsonl 已追加；采集失败不影响归档）
+- [ ] 健康评分已计算（health_scorer.py 已运行，health-history.jsonl 已追加；脚本不可用时不阻塞）
+- [ ] 进化信号已检测（evolution_signal.py 已运行，或无活跃工件跳过）
+- [ ] 自动进化已执行（CAPTURE/FIX/BITTER PILL/SUGGEST 按条件触发，或 evolution_mode=off 跳过）
 - [ ] PROGRESS.md 已清理
 - [ ] spec 目录已移动到 `.specs/archive/<date>-<id>/`（原路径已不存在）
 - [ ] 归档索引已更新

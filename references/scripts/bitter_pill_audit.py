@@ -203,13 +203,17 @@ def format_text(results, skill_dir="."):
 
 def main():
     parser = argparse.ArgumentParser(description="flow-go 苦丸审计")
-    parser.add_argument("--skill-dir", required=True, help="flow-go skill 根目录")
+    parser.add_argument("--skill-dir", default=None, help="flow-go skill 根目录（默认自动发现）")
     parser.add_argument("--output", help="输出路径（默认 stdout）")
     parser.add_argument("--format", choices=["text", "json", "markdown"], default="markdown",
                         help="输出格式：text（可读报告）或 json（结构化数据），默认 json")
     args = parser.parse_args()
 
-    files = scan_skill_dir(args.skill_dir)
+    # 自动发现 skill 目录（优先用户显式指定）
+    from _path_utils import resolve_skill_dir_for_audit
+    skill_dir = args.skill_dir or resolve_skill_dir_for_audit()
+
+    files = scan_skill_dir(skill_dir)
     all_results = []
 
     for filepath in files:
@@ -232,10 +236,10 @@ def main():
     if args.format == "json":
         output = json.dumps(all_results, ensure_ascii=False, indent=2)
     elif args.format == "text":
-        output = format_text(all_results, args.skill_dir)
+        output = format_text(all_results, skill_dir)
     else:
         # markdown（向后兼容）
-        output = format_markdown(all_results, args.skill_dir)
+        output = format_markdown(all_results, skill_dir)
 
     if args.output:
         with open(args.output, "w", encoding="utf-8") as f:

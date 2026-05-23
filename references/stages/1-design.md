@@ -5,6 +5,11 @@
 **输入**：`.specs/<id>/CHANGE.md` + `REQUIREMENT.md` + `.specs/CONTEXT.md`（如存在）
 
 **步骤**：
+0. **策略回顾**（如 `.specs/evolution/strategies.jsonl` 存在）：
+   - 读取 strategies.jsonl 中评分（score 字段）最高的 3 条策略
+   - 过滤 task_type 与当前变更类型匹配的条目（feature/refactor/bugfix/doc）
+   - 输出「📚 历史成功策略参考：{approach}（评分 {score}，类型 {task_type}）」
+   - 无匹配策略时静默跳过，不输出任何内容
 1. 技术栈选型：列 3-5 候选方案，给 1 首选 + 1 备选 + 排除理由，等用户选定
 2. 架构图：用 ASCII 或文字描述模块关系和数据流向
 3. API 设计：列出新增/变更的接口（方法、路径、请求、响应）
