@@ -3,7 +3,7 @@
 ## 活跃 Change
 | change-id | 阶段 | 最后更新 |
 |-----------|------|---------|
-| fix-dev-gate-bypass | 3-开发 | 2026-05-23 |
+| fix-dev-gate-bypass | 4-测试 | 2026-05-23 |
 
 ## Pipeline 待续
 - 无
