@@ -1,0 +1,21 @@
+{
+  "change_id": "live-qa-acceptance",
+  "classified_at": "2026-05-24T07:56:46",
+  "total_inputs": 8,
+  "stats": {
+    "project": 0,
+    "skill": 1,
+    "preference": 0,
+    "noise": 7
+  },
+  "results": [
+    {
+      "category": "skill",
+      "content": "验收阶段需要优化，在实际项目中，验收后发布启动还有很多明显的BUG，需要优化：借鉴 /qa 这个skill的做法",
+      "confidence": 0.8,
+      "stage": "0-需求",
+      "change_id": "live-qa-acceptance",
+      "ts": "2026-05-23T00:00:00"
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{"ts":"2026-05-23T00:00:00","change_id":"live-qa-acceptance","stage":"0-需求","input":"验收阶段需要优化，在实际项目中，验收后发布启动还有很多明显的BUG，需要优化：借鉴 /qa 这个skill的做法"}
+{"ts":"2026-05-23T23:03:00","change_id":"live-qa-acceptance","stage":"0-需求","input":"go"}
+{"ts":"2026-05-23T23:22:26","change_id":"live-qa-acceptance","stage":"1-设计","input":"go"}
+{"ts":"2026-05-23T23:32:30","change_id":"live-qa-acceptance","stage":"2-任务","input":"go"}
+{"ts":"2026-05-24T07:39:41","change_id":"live-qa-acceptance","stage":"3-开发","input":"go"}
+{"ts":"2026-05-24T07:45:45","change_id":"live-qa-acceptance","stage":"4-测试","input":"go"}
+{"ts":"2026-05-24T07:49:31","change_id":"live-qa-acceptance","stage":"5-审查","input":"go"}
+{"ts":"2026-05-24T07:50:29","change_id":"live-qa-acceptance","stage":"6-部署","input":"go"}
