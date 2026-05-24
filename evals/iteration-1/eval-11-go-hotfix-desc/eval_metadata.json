@@ -1,0 +1,12 @@
+{
+  "eval_id": 11,
+  "eval_name": "go-hotfix-with-description",
+  "prompt": "go 热修 生产环境内存泄漏，每隔2小时OOM重启一次",
+  "assertions": [
+    {"name": "reads_state_first", "description": "AI 先读 STATE.md 文件"},
+    {"name": "routes_to_hotfix", "description": "匹配到热修流程"},
+    {"name": "p_level_assessment", "description": "判定 P 等级（OOM重启应为 P0 或 P1）"},
+    {"name": "no_direct_code_fix", "description": "不直接写修复代码"},
+    {"name": "bug_description_preserved", "description": "OOM描述传递给热修流程"}
+  ]
+}

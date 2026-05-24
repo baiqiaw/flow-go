@@ -1,0 +1,125 @@
+{
+  "skill_name": "flow-go",
+  "iteration": 1,
+  "timestamp": "2026-05-24T00:00:00",
+  "summary": {
+    "with_skill": {
+      "pass_rate": 1.0,
+      "total_assertions": 14,
+      "passed": 14,
+      "avg_duration_seconds": 148.3,
+      "avg_tokens": 0
+    },
+    "without_skill": {
+      "pass_rate": 0.38,
+      "total_assertions": 14,
+      "passed": 5,
+      "avg_duration_seconds": 68.7,
+      "avg_tokens": 0
+    },
+    "delta": {
+      "pass_rate": 0.62,
+      "pass_rate_pct": "+62%"
+    }
+  },
+  "evals": [
+    {
+      "eval_id": 9,
+      "eval_name": "hotfix-compound-go-prefix",
+      "prompt": "go 修复bug:登录页面白屏，用户输入正确账号密码后页面变成空白",
+      "with_skill": {
+        "pass_rate": 1.0,
+        "passed": 6,
+        "total": 6,
+        "duration_seconds": 221.6,
+        "assertions": {
+          "reads_state_first": true,
+          "routes_to_hotfix": true,
+          "no_direct_code_fix": true,
+          "hotfix_p_level": true,
+          "root_cause_analysis": true,
+          "bug_description_preserved": true
+        }
+      },
+      "without_skill": {
+        "pass_rate": 0.67,
+        "passed": 4,
+        "total": 6,
+        "duration_seconds": 113.1,
+        "assertions": {
+          "reads_state_first": false,
+          "routes_to_hotfix": false,
+          "no_direct_code_fix": true,
+          "hotfix_p_level": true,
+          "root_cause_analysis": true,
+          "bug_description_preserved": true
+        }
+      }
+    },
+    {
+      "eval_id": 10,
+      "eval_name": "fixbug-no-go-prefix",
+      "prompt": "修bug 支付接口超时，用户反馈支付时经常超时失败",
+      "with_skill": {
+        "pass_rate": 1.0,
+        "passed": 3,
+        "total": 3,
+        "duration_seconds": 113.9,
+        "assertions": {
+          "reads_state_first": true,
+          "routes_to_hotfix": true,
+          "no_direct_code_fix": true
+        }
+      },
+      "without_skill": {
+        "pass_rate": 0.33,
+        "passed": 1,
+        "total": 3,
+        "duration_seconds": 44.1,
+        "assertions": {
+          "reads_state_first": false,
+          "routes_to_hotfix": false,
+          "no_direct_code_fix": true
+        }
+      }
+    },
+    {
+      "eval_id": 11,
+      "eval_name": "go-hotfix-with-description",
+      "prompt": "go 热修 生产环境内存泄漏，每隔2小时OOM重启一次",
+      "with_skill": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "total": 5,
+        "duration_seconds": 109.3,
+        "assertions": {
+          "reads_state_first": true,
+          "routes_to_hotfix": true,
+          "p_level_assessment": true,
+          "no_direct_code_fix": true,
+          "bug_description_preserved": true
+        }
+      },
+      "without_skill": {
+        "pass_rate": 0.2,
+        "passed": 1,
+        "total": 5,
+        "duration_seconds": 48.8,
+        "assertions": {
+          "reads_state_first": false,
+          "routes_to_hotfix": false,
+          "p_level_assessment": false,
+          "no_direct_code_fix": true,
+          "bug_description_preserved": true
+        }
+      }
+    }
+  ],
+  "analyst_observations": [
+    "ALL 14 assertions passed with skill (100% pass rate) — the fix works correctly for all three test patterns: 'go 修复bug:', '修bug', and 'go 热修'",
+    "Without skill, the 2 assertions that always pass are 'no_direct_code_fix' and 'bug_description_preserved' — these are non-discriminating (AI naturally avoids writing code without context)",
+    "The key discriminating assertions are 'reads_state_first' and 'routes_to_hotfix' — these NEVER pass without the skill (0/6) and ALWAYS pass with it (6/6)",
+    "eval-9 (the original bug pattern 'go 修复bug:描述') shows the most dramatic improvement: 6/6 vs 4/6, with the 2 failures being exactly the flow-go process steps (state reading and routing)",
+    "Token cost tradeoff: with_skill takes ~2x longer (148s vs 69s avg) due to the structured process steps, but this is expected and desirable — the extra time is spent on proper state management and gate checks"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "eval_id": 10,
+  "eval_name": "fixbug-no-go-prefix",
+  "prompt": "修bug 支付接口超时，用户反馈支付时经常超时失败",
+  "assertions": [
+    {"name": "reads_state_first", "description": "AI 先读 STATE.md 文件"},
+    {"name": "routes_to_hotfix", "description": "匹配到热修流程"},
+    {"name": "no_direct_code_fix", "description": "不直接写修复代码"}
+  ]
+}

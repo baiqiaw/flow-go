@@ -1,0 +1,9 @@
+{
+  "eval_id": 10,
+  "eval_name": "fixbug-no-go-prefix",
+  "grading": {
+    "reads_state_first": {"passed": false, "evidence": "未读STATE.md，直接检查仓库是否有支付相关代码"},
+    "routes_to_hotfix": {"passed": false, "evidence": "未经过任何流程路由，直接分析问题"},
+    "no_direct_code_fix": {"passed": true, "evidence": "也没有直接写修复代码，而是给出了排查建议"}
+  }
+}

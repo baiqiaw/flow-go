@@ -1,0 +1,9 @@
+{
+  "eval_id": 10,
+  "eval_name": "fixbug-no-go-prefix",
+  "grading": {
+    "reads_state_first": {"passed": true, "evidence": "读取STATE.md，确认无活跃Change"},
+    "routes_to_hotfix": {"passed": true, "evidence": "'修bug'匹配路由表热修行，进入热修流程"},
+    "no_direct_code_fix": {"passed": true, "evidence": "提出3个假设和澄清问题后暂停，未直接修复"}
+  }
+}

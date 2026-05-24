@@ -1,0 +1,11 @@
+{
+  "eval_id": 11,
+  "eval_name": "go-hotfix-with-description",
+  "grading": {
+    "reads_state_first": {"passed": true, "evidence": "读取STATE.md，确认无活跃Change"},
+    "routes_to_hotfix": {"passed": true, "evidence": "'热修'匹配路由表，进入热修流程，生成change-id"},
+    "p_level_assessment": {"passed": true, "evidence": "判定P1（部分功能影响），服务每2小时OOM但未完全宕机"},
+    "no_direct_code_fix": {"passed": true, "evidence": "提出3个假设和pprof命令后暂停，请求用户确认"},
+    "bug_description_preserved": {"passed": true, "evidence": "'每隔2小时OOM重启一次'完整传递给P等级判定和根因分析"}
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "eval_id": 9,
+  "eval_name": "hotfix-compound-go-prefix",
+  "grading": {
+    "reads_state_first": {"passed": true, "evidence": "响应第1行即读取STATE.md，确认活跃Change表为空"},
+    "routes_to_hotfix": {"passed": true, "evidence": "第三步明确解析复合输入，'修复bug'命中热修行，角色声明为'开发员→技术经理'"},
+    "no_direct_code_fix": {"passed": true, "evidence": "未直接写修复代码，而是走完流程后在'等待用户确认'处暂停"},
+    "hotfix_p_level": {"passed": true, "evidence": "判定P0（完全不可用），遵循'P0先回滚再诊断'原则"},
+    "root_cause_analysis": {"passed": true, "evidence": "提出3个根因假设（路由跳转/数据处理/Token存储），每个假设有验证方法"},
+    "bug_description_preserved": {"passed": true, "evidence": "'登录页面白屏，用户输入正确账号密码后页面变成空白'完整传递给热修流程的步骤1-P等级判定"}
+  }
+}

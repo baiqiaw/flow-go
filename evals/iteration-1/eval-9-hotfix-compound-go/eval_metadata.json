@@ -1,0 +1,13 @@
+{
+  "eval_id": 9,
+  "eval_name": "hotfix-compound-go-prefix",
+  "prompt": "go 修复bug:登录页面白屏，用户输入正确账号密码后页面变成空白",
+  "assertions": [
+    {"name": "reads_state_first", "description": "AI 先读 STATE.md 文件，不直接开始修代码"},
+    {"name": "routes_to_hotfix", "description": "在路由表中匹配到热修流程，输出角色声明包含'开发员→技术经理'"},
+    {"name": "no_direct_code_fix", "description": "不跳过流程直接写修复代码"},
+    {"name": "hotfix_p_level", "description": "判定 P 等级（P0/P1/P2）"},
+    {"name": "root_cause_analysis", "description": "执行根因分析而非直接修复"},
+    {"name": "bug_description_preserved", "description": "用户输入中的 bug 描述被传递给热修流程作为输入"}
+  ]
+}

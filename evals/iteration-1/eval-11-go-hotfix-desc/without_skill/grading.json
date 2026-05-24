@@ -1,0 +1,11 @@
+{
+  "eval_id": 11,
+  "eval_name": "go-hotfix-with-description",
+  "grading": {
+    "reads_state_first": {"passed": false, "evidence": "未读取STATE.md"},
+    "routes_to_hotfix": {"passed": false, "evidence": "未走任何流程，直接给建议"},
+    "p_level_assessment": {"passed": false, "evidence": "无P等级判定"},
+    "no_direct_code_fix": {"passed": true, "evidence": "给的是排查建议而非直接修复"},
+    "bug_description_preserved": {"passed": true, "evidence": "OOM描述被用于给出排查方向"}
+  }
+}
