@@ -44,7 +44,7 @@
    - 预检全通过 → 直接进入步骤 7
 7. 估算工时 + 标记风险任务。可选：将任务列表转为 JSON 后运行 `python3 references/scripts/task_estimator.py`，输出置信区间预测（如"70% 概率在 5-8h 完成"）
 8. 优先级排序（任务 > 3 个时必做）：grep 加载 `references/prioritization-quickref.md`，选择框架（默认 MoSCoW），给每个 task 标注 `priority` 属性，按优先级 > 评分 > 依赖拓扑 排序任务列表。任务 ≤ 3 个跳过此步
-9. 交叉评审（独立子代理，全新上下文）：grep `references/cross-review-matrix.md` 获取矩阵 A（文档评审）定义和子代理 prompt 模板。按模板构造子代理 prompt（传入工件：TASK.md，上游：DESIGN.md + REQUIREMENT.md）。子代理输出评审报告追加到 `<change-id>-REVIEW.md`。任一维度 FAIL → 修文档 → 重新调用子代理重评（无轮数限制，文档不能偏）。6 维全 PASS → 继续。子代理输出异常时按 cross-review-matrix.md 失败处理策略执行
+9. **<HARD-GATE> 交叉评审**（独立子代理，全新上下文）：grep `references/cross-review-matrix.md` 获取矩阵 A（文档评审）定义和子代理 prompt 模板。按模板构造子代理 prompt（传入工件：TASK.md，上游：DESIGN.md + REQUIREMENT.md）。子代理输出评审报告追加到 `<change-id>-REVIEW.md`。任一维度 FAIL → 修文档 → 重新调用子代理重评（无轮数限制，文档不能偏）。6 维全 PASS → 继续。子代理输出异常时按 cross-review-matrix.md 失败处理策略执行。**交叉评审是任务阶段的最后一道质量闸门——未经独立评审的任务拆解，粒度不均、依赖遗漏、verify 不可执行等问题会直接在开发阶段暴露，返工成本远高于评审。此步骤是阶段完成的硬性前置条件，不可跳过。未完成禁止转换到 3-开发。**
 
 **输出**：`.specs/<id>/TASK.md` + `.specs/<id>/<change-id>-REVIEW.md`（追加任务评审）
 

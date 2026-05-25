@@ -8,6 +8,7 @@
 """
 import glob
 import os
+import re
 import subprocess
 
 
@@ -116,6 +117,8 @@ def check_artifacts(stage, specs_dir, complexity="standard", path_mode="full", p
         path_mode: full/incremental/shortest
         project_dir: 项目根目录（可选，用于 git 状态检查）
     """
+    # 阶段名称映射（用于交叉评审章节定位）
+    STAGE_NAMES = {0: "需求", 1: "设计", 2: "任务"}
     gates = _get_gate_table(complexity, path_mode)
     required = gates.get(stage, [])
 
@@ -185,6 +188,52 @@ def check_artifacts(stage, specs_dir, complexity="standard", path_mode="full", p
         progress_files = glob.glob(os.path.join(specs_dir, "*-PROGRESS.md"))
         if progress_files:
             missing.append(f"存在未完成任务（{len(progress_files)} 个 PROGRESS 文件）")
+
+    # ── 交叉评审 PASS 验证（阶段 1/2/3 的进入闸门） ──
+    # 验证上游阶段的交叉评审已在 <change-id>-REVIEW.md 中产出且 6 维全 PASS
+    # 阶段 1 需要 0-需求 评审 PASS，阶段 2 需要 1-设计 评审 PASS，阶段 3 需要 2-任务 评审 PASS
+    REVIEW_REQUIRED_STAGES = {1: 0, 2: 1, 3: 2}
+    if stage in REVIEW_REQUIRED_STAGES and complexity != "lite" and path_mode in ("full", "incremental"):
+        upstream_stage = REVIEW_REQUIRED_STAGES[stage]
+        upstream_name = STAGE_NAMES.get(upstream_stage, str(upstream_stage))
+        # 查找 <change-id>-REVIEW.md
+        review_files = glob.glob(os.path.join(specs_dir, "*-REVIEW.md"))
+        if not review_files:
+            missing.append(f"<change-id>-REVIEW.md（缺少 {upstream_stage}-{upstream_name} 交叉评审报告）")
+        else:
+            review_path = review_files[0]
+            try:
+                with open(review_path, encoding="utf-8") as f:
+                    content = f.read()
+                # 宽松匹配上游阶段评审章节：容忍标题格式变体
+                # 接受: "## 0-需求 评审", "### 0-需求 交叉评审", "## 0-需求阶段", "## 0-需求 交叉评审（第 1 轮）"
+                section_pattern = rf"##?\s*{upstream_stage}-.*(?:评审|阶段)"
+                section_match = re.search(section_pattern, content)
+                if not section_match:
+                    missing.append(
+                        f"REVIEW.md 缺少 {upstream_stage}-{upstream_name} 评审章节"
+                        f"（交叉评审未执行）"
+                    )
+                else:
+                    # 提取该章节内容（到下一个 ## 级别标题或文件末尾）
+                    section_start = section_match.start()
+                    next_section = re.search(r"\n## ", content[section_start + len(section_match.group()):])
+                    section = content[section_start:] if not next_section else content[section_start:section_start + len(section_match.group()) + next_section.start()]
+                    # 检查评审矩阵中是否有 FAIL
+                    fail_matches = re.findall(r"\|\s*(?:上游一致性|下游充分性|用户意图对齐|完备性|反幻觉|范围控制)\s*\|\s*FAIL", section)
+                    pass_count = len(re.findall(r"\|\s*(?:上游一致性|下游充分性|用户意图对齐|完备性|反幻觉|范围控制)\s*\|\s*PASS", section))
+                    if fail_matches:
+                        missing.append(
+                            f"REVIEW.md {upstream_stage}-{upstream_name} 评审有 {len(fail_matches)} 个 FAIL 维度"
+                            f"（交叉评审未通过，需修复后重评）"
+                        )
+                    elif pass_count < 6:
+                        missing.append(
+                            f"REVIEW.md {upstream_stage}-{upstream_name} 评审矩阵不完整"
+                            f"（仅 {pass_count}/6 维有 PASS 判定）"
+                        )
+            except (OSError, UnicodeDecodeError):
+                warnings.append(f"无法读取 REVIEW.md 进行交叉评审验证")
 
     return {
         "passed": len(missing) == 0,

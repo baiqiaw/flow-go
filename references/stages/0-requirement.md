@@ -73,12 +73,13 @@
 	   - 更新后重新写入 `.specs/CONTEXT.md`，保留已有术语不变，追加或更新新术语
 5. 范围排除：明确"这次不做什么"，至少 1 条
 6. 影响面判定：是否改 REQUIREMENT / 涉及架构 / 影响 AC / 需要 CONTEXT 更新。CONTEXT 需更新：是 / 否（如新增术语或有术语定义变更）
-7. 交叉评审前自检（lightweight）：快速检查 artifact 完整性
+7. **<HARD-GATE> 交叉评审前自检**（lightweight）：快速检查 artifact 完整性
    - [ ] 无 TBD/TODO/待定 占位符
    - [ ] AC 条数与用户确认的范围一致
    - [ ] 影响面字段已填写（非空）
    - 自检不通过 → 修复后自检；自检通过 → dispatch 交叉评审子代理
-8. 交叉评审（独立子代理，全新上下文）：grep `references/cross-review-matrix.md` 获取矩阵 A（文档评审）定义和子代理 prompt 模板。按模板构造子代理 prompt（传入工件：CHANGE.md + REQUIREMENT.md，上游：用户原始输入 + CONTEXT.md）。子代理输出评审报告到 `<change-id>-REVIEW.md`。任一维度 FAIL → 修文档 → 重新调用子代理重评（无轮数限制，文档不能偏）。6 维全 PASS → 继续。子代理输出异常时按 cross-review-matrix.md 失败处理策略执行
+   - **此步骤和步骤 8 是阶段完成的硬性前置条件，不可跳过。未完成禁止转换到 1-设计。**
+8. **<HARD-GATE> 交叉评审**（独立子代理，全新上下文）：grep `references/cross-review-matrix.md` 获取矩阵 A（文档评审）定义和子代理 prompt 模板。按模板构造子代理 prompt（传入工件：CHANGE.md + REQUIREMENT.md，上游：用户原始输入 + CONTEXT.md）。子代理输出评审报告到 `<change-id>-REVIEW.md`。任一维度 FAIL → 修文档 → 重新调用子代理重评（无轮数限制，文档不能偏）。6 维全 PASS → 继续。子代理输出异常时按 cross-review-matrix.md 失败处理策略执行。**交叉评审是需求阶段的最后一道质量闸门——未经验证的需求会带着模糊性和遗漏流向设计和开发，越晚发现成本越高。**
 9. 路径建议：grep `references/path-modes.md` 获取三种模式定义。根据需求特征（改动文件数、架构影响、部署环境）建议完整/增量/最短路径，附判断理由。用户确认或覆盖路径选择后：
    - (a) 将路径模式写入 CHANGE.md 的 `路径建议` 章节：`完整 / 增量 / 最短，理由：<...>`
    - (b) 将路径模式写入 `.specs/<change-id>/STATE.md` 的 `路径模式` 字段：`完整` / `增量` / `最短`（三选一）

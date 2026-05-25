@@ -56,12 +56,13 @@
 	     * 将验证过的决策提炼进 DESIGN.md 的"原型决策"章节
 	     * 删除原型代码（或标记为待删除）
 	     * 如保留：明确标注为 `[PROTOTYPE - 回答完 {问题} 后删除]`
-8. 交叉评审前自检（lightweight）：
+8. **<HARD-GATE> 交叉评审前自检**（lightweight）：
    - [ ] 无 TBD/TODO/待定 占位符
    - [ ] ADR 每条有替代方案对比
    - [ ] 技术栈选定有最终选择（非"待用户确认"）
    - 自检不通过 → 修复后自检；自检通过 → dispatch 交叉评审子代理
-9. 交叉评审（独立子代理，全新上下文）：grep `references/cross-review-matrix.md` 获取矩阵 A（文档评审）定义和子代理 prompt 模板。按模板构造子代理 prompt（传入工件：DESIGN.md，上游：REQUIREMENT.md + CHANGE.md + CONTEXT.md）。子代理输出评审报告追加到 `<change-id>-REVIEW.md`。任一维度 FAIL → 修文档 → 重新调用子代理重评（无轮数限制，文档不能偏）。6 维全 PASS → 继续。子代理输出异常时按 cross-review-matrix.md 失败处理策略执行
+   - **此步骤和步骤 9 是阶段完成的硬性前置条件，不可跳过。未完成禁止转换到 2-任务。**
+9. **<HARD-GATE> 交叉评审**（独立子代理，全新上下文）：grep `references/cross-review-matrix.md` 获取矩阵 A（文档评审）定义和子代理 prompt 模板。按模板构造子代理 prompt（传入工件：DESIGN.md，上游：REQUIREMENT.md + CHANGE.md + CONTEXT.md）。子代理输出评审报告追加到 `<change-id>-REVIEW.md`。任一维度 FAIL → 修文档 → 重新调用子代理重评（无轮数限制，文档不能偏）。6 维全 PASS → 继续。子代理输出异常时按 cross-review-matrix.md 失败处理策略执行。**交叉评审是设计阶段的最后一道质量闸门——没有独立视角的评审，设计者自己的盲点会直接流入任务拆解和开发，返工成本指数增长。**
 
 **输出**：`.specs/<id>/DESIGN.md` + `.specs/<id>/<change-id>-REVIEW.md`（追加设计评审）
 
