@@ -72,6 +72,13 @@
    - 提交消息包含正确的假设："原因是 X，通过 Y 修复"
    - 事后分析："什么能防止这个 bug 再次出现？"→ 如涉及架构变更，建议后续重构
 9. 跑 verify：贴出真实命令输出。**verify 必须全部通过（0 失败）**——不区分失败来源，任何测试失败都是阻塞项，禁止以"不是本次变更导致"为由绕过。未通过不标记完成
+9a. **Guard 回归防护**（guard_enabled=true 时执行）：
+    - 读取当前 task 的 `<guard>` 字段（如无则跳过本步骤）
+    - 运行 guard 命令，超时阈值：`guard_timeout`（默认 30 秒）
+    - 通过（exit 0）→ 继续下一步
+    - 失败（exit non-0）→ `git checkout -- <write_files>` 回滚该 task 改动，记录到 SUMMARY.md「Guard 失败」章节，停止当前 task
+    - 超时 → 告警「⚠️ Guard 超时（{N}s），不阻塞」，继续下一步
+    - **约束**：guard 命令不可修改 write_files 中的文件；guard 文件不在 write_files 范围内
 9. 提交前 diff 边界检查：`git diff --name-only` vs TASK 的 write_files，越界则停下
 10. 写 SUMMARY（含交叉评审章节）
 11. **锁释放**：确认 SUMMARY.md 已写入后删除 `.specs/<id>/.lock`
@@ -94,6 +101,22 @@
 - **Blast radius check**：修复涉及 > 5 文件时，停下向用户确认范围
 - **连续失败熔断**：编译/运行连续失败 3 次 → 停下报告用户，不盲目重试
 - **改动文件上限**：单任务改动 > 10 文件时警告，建议拆分
+- **Plateau 停滞检测**（stagnation_patience 控制，默认 3）：
+  - 维护 `consecutive_failures` 计数器（在阶段进度中记录）
+  - task verify 或 Guard 失败 → counter += 1；task 成功 → counter 重置为 0
+  - counter >= stagnation_patience → 暂停，输出升级报告：
+    ```
+    ⚠️ Plateau 检测：连续 {N} 个 task 未能通过验证
+    已尝试方法：{失败 task 的 action 摘要}
+    推荐方向：{基于 git log 分析失败模式，建议 2-3 个替代方向}
+    ```
+  - 用户选择：(a) 调整策略后继续 (b) 跳过当前 task (c) 中断
+
+**结构化迭代日志**（iteration_log 控制，默认 true）：
+- 每个 task 完成后（无论成功或失败），追加一行到 `.specs/<id>/iterations.tsv`
+- 格式：`{timestamp}\t3-开发\t{task_id}\t{action摘要}\t{status}\t{metric}\t{description}`
+- 首次写入时先创建表头行
+- 追加失败时降级告警，不阻塞 task 流程
 
 **输出**：代码 + `.specs/<id>/<task-id>-SUMMARY.md`（含交叉评审章节）
 
@@ -156,6 +179,12 @@
 
 ## 精炼环
 代码编写完成后、写 SUMMARY 之前，执行 SKILL.md「阶段内精炼环」4 项检查。LITE 模式跳过。
+
+**Git as Memory 扩展**（精炼环「边界卫生」项增强）：
+- 运行 `git log --oneline -5`，检查最近 5 个 commit 消息
+- 识别已回滚方案：消息含 `Revert` 或 `回滚` → 记录该方案为已失败
+- 当前 task 的实现方向与已回滚方案重叠 → 输出「⚠️ 方案与已回滚的 {commit} 重叠，建议换方向」
+- 识别成功模式：最近 3 个非 Revert commit → 提取共性文件/方法，优先沿用
 
 ## 验证闭环
 精炼环通过后，执行 SKILL.md「阶段内验证闭环」开发场景 3 步。结果记录到 SUMMARY.md。

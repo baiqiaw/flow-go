@@ -131,6 +131,11 @@ description: >
 | `context_summarize` | false | 是否默认启用上下文摘要（false=全文加载，true=摘要加载） |
 | `trace_auto_collect` | true | 归档时是否自动采集轨迹 |
 | `user_input_capture` | true | 是否记录用户输入到 user-inputs.jsonl |
+| `guard_enabled` | true | 3-开发阶段启用 Guard 回归防护（true=每个 task 完成后运行 guard / false=跳过） |
+| `guard_timeout` | 30 | Guard 命令超时秒数，超时视为通过并告警（不阻塞） |
+| `git_memory_depth` | 20 | 回溯/精炼环读取 git 历史的 commit 数量 |
+| `stagnation_patience` | 3 | 3-开发/4-测试阶段连续失败多少轮触发 Plateau 告警 |
+| `iteration_log` | true | 是否在 .specs/<id>/iterations.tsv 记录结构化迭代日志 |
 
 **配置格式**（YAML，每行一个键值对）：
 ```yaml
@@ -149,6 +154,11 @@ flywheel_outcome_days: 7
 context_summarize: false
 trace_auto_collect: true
 user_input_capture: true
+guard_enabled: true
+guard_timeout: 30
+git_memory_depth: 20
+stagnation_patience: 3
+iteration_log: true
 ```
 
 ### Terse 模式压缩规则

@@ -273,6 +273,10 @@
    - worktree_path 非空且 `test -d <path>` → EnterWorktree（path: <path>）进入
    - 非空但目录不存在 → 输出「⚠️ worktree 已丢失：<path>，建议手动恢复或废弃」
    - worktree_path 为空 → 留在主仓库
+1.7. **Git as Memory**：读取 `git log --oneline -{git_memory_depth}`（默认 20）和最近 3 个 commit 的 `git diff --stat`，提取：
+   - 已完成实验模式（哪些文件/方法驱动了改进）
+   - 已回滚方案（grep Revert，避免重复）
+   - 将摘要注入会话上下文，供后续阶段决策参考
 2. **Pipeline 待续检查**：`Pipeline 待续` 非空且 `活跃 Change` 为空 → 优先输出「📋 Pipeline 待续：{change-id}，要开始吗？」，用户确认后走 AC-4 启动流程
 3. 读最近 3 个 `<task-id>-SUMMARY.md`
 4. 读 `.specs/LESSONS.md`
@@ -292,6 +296,7 @@
 
 **自检**：
 - [ ] STATE.md 已读（索引表 + `.specs/<id>/STATE.md` 如存在）
+- [ ] Git as Memory 已执行（git log + diff 摘要已注入上下文）
 - [ ] Pipeline 待续已检查
 - [ ] 最近 3 个 SUMMARY 已扫
 - [ ] 搁置时长已检查

@@ -20,6 +20,7 @@
 - [ ] mode 字段已填写（afk/hitl/colab）
 - [ ] e2e_coverage 字段已填写（声明穿透层路径）
 - [ ] independently_verifiable 字段已填写（tracer bullet 声明）
+- [ ] guard 字段（如填写）命令可执行且不依赖本次变更的文件
 
 ### SUMMARY.md 自检
 - [ ] 改动文件表已填写（非空）
@@ -51,6 +52,7 @@
   <action>实现描述</action>
   <verify>npm test -- module/NewFeature.test.ts</verify>
   <done>测试通过，功能符合 AC-1</done>
+  <guard>npm test</guard>
   <depends_on></depends_on>
   <e2e_coverage>schema → API → 业务逻辑 → 测试</e2e_coverage>
   <independently_verifiable>true</independently_verifiable>
@@ -89,6 +91,11 @@ mode 取值（必填）：
 
 e2e_coverage（必填，垂直切片声明）：
   用箭头链声明穿透层路径，如 "schema → API → 业务逻辑 → 测试"。
+
+guard（可选，回归防护）：
+  一个 shell 命令，task 完成后自动运行，验证改动未破坏已有功能。
+  不填写时跳过 Guard 检查。常见值：npm test / pytest / go test ./...
+  约束：guard 命令不能依赖本次变更的文件（测试文件不在 write_files 内）。
   纯 setup/teardown 前序任务可写 "公共类型定义（setup 任务，非垂直切片）"。
 
 independently_verifiable（必填，tracer bullet 声明）：

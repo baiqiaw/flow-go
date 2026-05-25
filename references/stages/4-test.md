@@ -140,6 +140,19 @@ Bug 清单中**每条 issue 的证据列不可为空**。证据类型：
 - **测试轮数上限**：单轮测试修复默认 ≤ 3 轮，超过则报告用户决策
 - **失败用例上限**：单轮 Critical/High 合计 > 5 个 → 停下报告，不再逐个修复
 - **原子修复**：每个 bug 修复独立提交，格式 `fix(<change-id>): ISSUE-<N> — <desc>`
+- **Plateau 停滞告警**（stagnation_patience 控制，默认 3）：
+  - 追踪连续轮次中 Critical/High 错误数是否减少
+  - 连续 stagnation_patience 轮错误数未减少 → 输出告警：
+    ```
+    ⚠️ 测试 Plateau：连续 {N} 轮修复未减少错误数（当前 {count} 个 Critical/High）
+    建议：调整测试策略、扩大 scope、或回退到上一个稳定版本
+    ```
+  - 不暂停流程（仅建议），由用户决定是否调整
+- **结构化迭代日志**（iteration_log 控制，默认 true）：
+  - 每轮测试完成后追加一行到 `.specs/<id>/iterations.tsv`
+  - 格式：`{timestamp}\t4-测试\t{轮次}\t测试执行\t{status}\t{通过率%}\t{description}`
+  - 首次写入时先创建表头行
+  - 追加失败时降级告警，不阻塞测试流程
 
 **输出**：`.specs/<id>/TEST.md`
 
