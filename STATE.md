@@ -3,7 +3,7 @@
 ## 活跃 Change
 | change-id | 阶段 | 最后更新 |
 |-----------|------|---------|
-| autoresearch-borrow | 1-设计 | 2026-05-25 |
+| （无活跃 Change） | | |
 
 ## Pipeline 待续
 - 无
