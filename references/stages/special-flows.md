@@ -63,17 +63,7 @@
 1. 确认归档目标：取 STATE.md 索引表的 `活跃 Change`（必须非空）
 2. 阶段盘点：检查 `.specs/<id>/` 下已有的工件文件，列出已完成阶段
 3. 归档原因确认：询问用户归档原因（正常完成/不需要后续阶段/需求变更/其他）
-3.5. **Worktree 合并与清理**（如 per-change STATE.md 的 `worktree_path` 非空）：
-   - (a) ExitWorktree 退出 worktree，回到主仓库
-   - (b) `git checkout main` 确保在 main 分支
-   - (c) `git merge change/<id>` 将分支合并到 main
-   - (d) STATE.md 冲突：接受 main 版本（`git checkout --ours STATE.md`），然后执行本流程步骤 9 的 STATE.md 清理
-   - (e) 其他冲突：停下来提示用户手动解决
-   - (f) `git worktree remove <worktree_path>` 删除 worktree
-   - (g) `git branch -d change/<id>` 删除分支
-   - (h) per-change STATE.md 的 `worktree_path` 清为 `无`
-   - worktree_path 为空 → 跳过本步骤
-   - 详细流程见 `references/worktree-lifecycle.md`「归档合并流程」章节
+3.5. **Worktree 合并与清理**（如 per-change STATE.md 的 `worktree_path` 非空）：grep 加载 `references/worktree-lifecycle.md`「归档合并流程」章节执行。worktree_path 为空 → 跳过本步骤
 4. 写归档记录：在 spec 目录下创建归档文件
    - 已到 7-验收且 UAT 通过 → UAT.md 已有归档段，无需额外文件
    - 未到 7-验收 → 创建 ARCHIVE.md（见 `artifacts/spec-artifacts.md`）
@@ -97,11 +87,10 @@
 4.6b. **热修反馈分析**（可选）：如 `.specs/<id>/user-inputs.jsonl` 存在且行数 > 5 → 运行 `python3 references/scripts/feedback_classifier.py --specs-dir .specs/<id> --complexity LITE`。有 skill 反馈 → 追加到 `.specs/evolution/skill-feedback.jsonl`，输出「🔥 热修反馈已捕获：skill N 条」。行数 ≤ 5 时跳过
 5. LESSONS 提名：扫已有 SUMMARY 和 PROGRESS，符合提名条件的入库
 6. 临时文件清理：删除 spec 目录下所有 `*-PROGRESS.md`
-   > ⚠️ 步骤 7-9 必须严格按顺序执行，不允许跳步。STATE.md 清理（步骤 9：索引表移除 + `.specs/<id>/STATE.md` 删除）必须在目录移动（步骤 7）和索引更新（步骤 8）完成后才执行。
-7. 移动归档：执行 `mv .specs/<id>/ .specs/archive/<date>-<id>/`（date 格式 YYYYMMDD；如 archive 目录不存在则先 `mkdir -p .specs/archive`）。**必须在步骤 8 之前完成**，因为索引指向移动后的路径
+7. 移动归档：加载 `references/common/archive-move.md`（target_subpath=""）。验证通过后继续步骤 8（归档索引）和步骤 9（STATE.md 清理）
 8. 更新归档索引：读 `.specs/archive/ARCHIVE-INDEX.md`（不存在则按 `meta-artifacts.md` 模板创建），追加新归档条目到清单表格，更新归档统计
 8.1. **PIPELINE.md 状态更新**（如 PIPELINE.md 存在）：将当前归档 change 的状态从 `active` 改为 `completed`
-8.5. **Pipeline 衔接检查**：读取 `.specs/PIPELINE.md`（如存在），找下一个 `pending` change（按优先级排序，依赖已完成）。找到 → 项目级 STATE.md 写入 `Pipeline 待续` 字段 → 输出「📋 Pipeline 下一个：{change-id} — {描述}」→ 询问用户是否立即开始。用户确认 → 走 AC-4 启动流程（清空 Pipeline 待续 → PIPELINE.md 标记 active → 创建目录 → STATE.md 索引表新增该 change 行 → 创建 `.specs/<id>/STATE.md` 初始状态 → 路由到 0-需求）。用户拒绝 → 保留 Pipeline 待续 字段。PIPELINE.md 不存在或无 pending → 跳过
+8.5. **Pipeline 衔接检查**：读取 `.specs/PIPELINE.md`（如存在），找下一个 `pending` change（按优先级排序，依赖已完成）。找到 → STATE.md 写入 `Pipeline 待续` 字段 → 输出「📋 Pipeline 下一个：{change-id} — {描述}」→ 加载 `references/common/pipeline-continuation.md`（trigger=archive-complete）。PIPELINE.md 不存在或无 pending → 跳过
 9. STATE.md 清理：从 STATE.md 索引表移除该 change 行 + 删除 `.specs/<id>/STATE.md`。**注意**：`Pipeline 待续` 字段如步骤 8.5 已写入，则保留不清空
 9.5. **成功指标**（归档完成时输出，供用户快速判断 flow-go 是否生效）：
     - Diff 中无关改动行数是否减少？（对比上次归档 diff）
@@ -137,7 +126,7 @@
 - [ ] 进化信号已检测（evolution_signal.py 已运行，或无活跃工件跳过）
 - [ ] 自动进化已执行（CAPTURE/FIX/BITTER PILL/SUGGEST 按条件触发，或 evolution_mode=off 跳过）
 - [ ] PROGRESS.md 已清理
-- [ ] spec 目录已移动到 `.specs/archive/<date>-<id>/`（原路径已不存在）
+- [ ] spec 目录已移动到 `.specs/archive/<date>-<id>/`（原路径已不存在）—— **归档移动验证已通过（加载 archive-move.md 并输出确认）**
 - [ ] 归档索引已更新
 - [ ] Pipeline 衔接已检查（PIPELINE.md 存在时）
 - [ ] STATE.md 已清理（索引表移除该 change 行 + `.specs/<id>/STATE.md` 已删除；Pipeline 待续 保留如有写入）
@@ -232,13 +221,8 @@
 2. 废弃影响评估：列出已到达阶段 + 代码提交状态 + 并行依赖
 3. 写 ABANDONED.md（见 `artifacts/deploy-artifacts.md`）
 4. 临时文件清理：删除所有 `*-PROGRESS.md`。user-inputs.jsonl 不删除，随目录移动到归档
-4.5. **Worktree 清理**（如 per-change STATE.md 的 `worktree_path` 非空）：
-   - (a) ExitWorktree 退出 worktree
-   - (b) `git worktree remove --force <worktree_path>` 强制删除（丢弃改动）
-   - (c) `git branch -D change/<id>` 强制删除分支（不合并）
-   - worktree_path 为空 → 跳过本步骤
-   - 详细流程见 `references/worktree-lifecycle.md`「废弃清理流程」章节
-5. 移动归档：`.specs/<id>/` → `.specs/archive/abandoned/<date>-<id>/`（含 user-inputs.jsonl）
+4.5. **Worktree 清理**（如 per-change STATE.md 的 `worktree_path` 非空）：grep 加载 `references/worktree-lifecycle.md`「废弃清理流程」章节执行。worktree_path 为空 → 跳过本步骤
+5. 移动归档：加载 `references/common/archive-move.md`（target_subpath="abandoned/"）。验证通过后继续步骤 6（归档索引）和步骤 7（STATE.md 清理）
 6. 更新归档索引
 7. STATE.md 清理（如废弃的是活跃 Change → 从索引表移除该 change 行 + 删除 `.specs/<id>/STATE.md`）
 8. LESSONS 提名（从 PROGRESS 中提取已排除方案）
@@ -277,7 +261,7 @@
    - 已完成实验模式（哪些文件/方法驱动了改进）
    - 已回滚方案（grep Revert，避免重复）
    - 将摘要注入会话上下文，供后续阶段决策参考
-2. **Pipeline 待续检查**：`Pipeline 待续` 非空且 `活跃 Change` 为空 → 优先输出「📋 Pipeline 待续：{change-id}，要开始吗？」，用户确认后走 AC-4 启动流程
+2. **Pipeline 待续检查**：`Pipeline 待续` 非空且 `活跃 Change` 为空 → 加载 `references/common/pipeline-continuation.md`（trigger=recall-start）
 3. 读最近 3 个 `<task-id>-SUMMARY.md`
 4. 读 `.specs/LESSONS.md`
 5. grep 待办（`TODO` / `FIXME` / `HACK`）

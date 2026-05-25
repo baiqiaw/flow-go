@@ -92,7 +92,7 @@ description: >
 7. 尝试读 `.specs/CONTEXT.md`。不存在 → 棕地项目提醒可跑 intel-scan，不强制
    - 读取 `.specs/CONTEXT.md`（如存在）→ 将术语定义注入到会话上下文，后续所有阶段使用规范术语
    - 读取 `.specs/adr/` 目录（如存在且非空）→ 统计 ADR 数量，提示"已有 N 条架构决策记录，设计阶段将自动检查"
-8. `Pipeline 待续` 非空且活跃 Change 表为空 → 优先输出「📋 Pipeline 待续：{change-id}，要开始吗？」。用户确认"开始"后执行启动流程：清空 `Pipeline 待续` 字段 → PIPELINE.md 中该 change 标记为 `active` → 创建 `.specs/<id>/` 目录 + `.specs/<id>/STATE.md` → 更新 STATE.md 索引表添加行 → 路由到 0-需求
+8. `Pipeline 待续` 非空且活跃 Change 表为空 → 加载 `references/common/pipeline-continuation.md`（trigger=recall-start）
 
 ## 第二步 · 加载配置（可选）
 
@@ -291,6 +291,7 @@ Handoff 检查在**首次阶段转换**时执行，验证上游上下文是否�
 | 7-验收 | `stages/7-acceptance.md` | `artifacts/deploy-artifacts.md`（UAT） |
 | 热修/归档/废弃/回溯/归档维护 | `stages/special-flows.md`（grep 对应流程） | 按需（归档→`meta-artifacts.md`，废弃→`deploy-artifacts.md`） |
 | worktree 相关 | grep 加载 `references/worktree-lifecycle.md` 对应流程 | — |
+| common/ 引用 | special-flows.md 步骤内显式写明加载路径 | 按参数替换后执行 |
 
 **Token 预算**：按阶段按需加载 reference 文件（禁止整读）。每个阶段仅加载 `stages/<N>-<name>.md` + 对应 `artifacts/<category>.md`，需额外参考时才 grep 其他文件。评审子代理调用不计入主代理 token 预算。
 
