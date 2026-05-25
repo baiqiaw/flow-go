@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "eval_name": "requirement-route",
+  "grading": {
+    "routes_to_requirement": {"text": "路由到 0-需求阶段", "passed": true, "evidence": "路由表匹配：任何新事物描述（当前无活跃 change）→ 0-需求 → 产品经理"},
+    "pm_role_declared": {"text": "产品经理角色声明", "passed": true, "evidence": "角色声明：✅ 当前角色：产品经理"},
+    "generates_change_id": {"text": "生成或提议 change-id", "passed": true, "evidence": "Change-ID：待生成 → 后续流程中生成了 file-upload"},
+    "clarifies_dimensions": {"text": "反问澄清细节（why/who/what/when 中至少 2 个维度）", "passed": true, "evidence": "4维度评估：Why可推断、Who❌不充分（提问）、What✅、When可推断。执行了设计树追问6个决策分支"},
+    "no_premature_implementation": {"text": "不直接写代码或设计方案", "passed": true, "evidence": "完整走需求流程（澄清→用户故事→AC→排除→影响→自检→交叉评审→路径推荐），未写任何代码"}
+  }
+}

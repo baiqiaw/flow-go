@@ -1,0 +1,11 @@
+{
+  "eval_id": 8,
+  "eval_name": "hotfix-no-description",
+  "grading": {
+    "routes_to_hotfix": {"text": "路由到热修流程", "passed": true, "evidence": "理解用户意图为热修，但无结构化路由"},
+    "correct_roles": {"text": "开发员→技术经理角色", "passed": false, "evidence": "无角色声明"},
+    "requests_bug_description": {"text": "要求用户提供 bug 描述", "passed": true, "evidence": "询问 bug 现象、影响范围、紧急程度"},
+    "waits_for_description": {"text": "不直接开始修复（无描述时等待输入）", "passed": true, "evidence": "等待用户描述 bug"},
+    "mentions_p_level": {"text": "提到 P 等级判定流程", "passed": false, "evidence": "只问了紧急程度，没有 P0/P1/P2 等级判定体系"}
+  }
+}

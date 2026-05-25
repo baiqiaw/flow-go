@@ -1,0 +1,13 @@
+{
+  "eval_id": 2,
+  "eval_name": "go-state-read",
+  "prompt": "go",
+  "files": [{"path": "STATE.md", "content": "# STATE\n\n活跃 Change: user-auth\n当前阶段: 3-开发\n当前任务: T02\n中断任务: \n\n最后更新: 2026-05-14"}],
+  "assertions": [
+    {"text": "读取 STATE.md", "name": "reads_state"},
+    {"text": "识别活跃 Change 为 user-auth", "name": "identifies_active_change"},
+    {"text": "路由到 3-开发阶段（继续当前阶段）", "name": "routes_to_current_stage"},
+    {"text": "检测到旧格式 STATE.md 并触发迁移或降级", "name": "detects_legacy_format"},
+    {"text": "执行角色声明", "name": "role_declared"}
+  ]
+}

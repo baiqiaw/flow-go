@@ -1,0 +1,12 @@
+{
+  "eval_id": 5,
+  "eval_name": "malformed-state",
+  "prompt": "go",
+  "files": [{"path": "STATE.md", "content": "# STATE\n\n活跃 Change: user-auth\n当前阶段: 3-开发"}],
+  "assertions": [
+    {"text": "检测到 STATE.md 缺少必填字段", "name": "detects_incomplete_state"},
+    {"text": "输出具体缺失问题", "name": "reports_specific_issues"},
+    {"text": "降级为无状态模式或提示修复", "name": "degrades_gracefully"},
+    {"text": "不直接按部分状态路由", "name": "no_partial_routing"}
+  ]
+}

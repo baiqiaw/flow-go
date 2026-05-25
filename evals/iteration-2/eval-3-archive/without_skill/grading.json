@@ -1,0 +1,11 @@
+{
+  "eval_id": 3,
+  "eval_name": "archive-flow",
+  "grading": {
+    "routes_to_archive": {"text": "路由到归档流程", "passed": true, "evidence": "理解用户意图为归档 user-auth"},
+    "checks_active_change": {"text": "检查活跃 Change 和当前状态", "passed": true, "evidence": "识别了 user-auth 处于 5-审查阶段"},
+    "lists_existing_artifacts": {"text": "列出 .specs/ 下已有工件", "passed": false, "evidence": "提到了工件（REQUIREMENT.md、DESIGN.md等）但没有实际扫描目录"},
+    "confirms_archive_reason": {"text": "询问归档原因或确认", "passed": true, "evidence": "询问审查是否完成、是否确认归档"},
+    "no_unconfirmed_deletion": {"text": "不直接删除文件（需要确认）", "passed": true, "evidence": "请求用户确认后才执行归档步骤"}
+  }
+}

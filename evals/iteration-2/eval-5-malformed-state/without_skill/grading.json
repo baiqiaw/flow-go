@@ -1,0 +1,10 @@
+{
+  "eval_id": 5,
+  "eval_name": "malformed-state",
+  "grading": {
+    "detects_incomplete_state": {"text": "检测到 STATE.md 缺少必填字段", "passed": true, "evidence": "检测到格式异常，指出缺少字段"},
+    "reports_specific_issues": {"text": "输出具体缺失问题", "passed": true, "evidence": "指出缺少表格结构和标准格式字段，但未逐一列出缺失项"},
+    "degrades_gracefully": {"text": "降级为无状态模式或提示修复", "passed": false, "evidence": "没有提供降级路径（如新需求），只是请用户修复STATE.md"},
+    "no_partial_routing": {"text": "不直接按部分状态路由", "passed": true, "evidence": "阻断了操作，没有按部分状态继续"}
+  }
+}

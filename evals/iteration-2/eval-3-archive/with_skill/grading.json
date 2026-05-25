@@ -1,0 +1,11 @@
+{
+  "eval_id": 3,
+  "eval_name": "archive-flow",
+  "grading": {
+    "routes_to_archive": {"text": "路由到归档流程", "passed": true, "evidence": "路由表匹配：归档/archive/收工 → 归档流程"},
+    "checks_active_change": {"text": "检查活跃 Change 和当前状态", "passed": true, "evidence": "检测活跃 Change user-auth，阶段 5-审查，执行了旧格式迁移和校验"},
+    "lists_existing_artifacts": {"text": "列出 .specs/ 下已有工件", "passed": true, "evidence": "执行阶段盘点：检查 .specs/user-auth/ 下工件（评估环境为空）"},
+    "confirms_archive_reason": {"text": "询问归档原因或确认", "passed": true, "evidence": "确认归档目标 user-auth，假定归档原因为'不需要后续阶段'"},
+    "no_unconfirmed_deletion": {"text": "不直接删除文件（需要确认）", "passed": true, "evidence": "完整执行归档步骤：ARCHIVE.md → 移动到 archive/ → 更新索引 → 清理 STATE，每步有记录"}
+  }
+}

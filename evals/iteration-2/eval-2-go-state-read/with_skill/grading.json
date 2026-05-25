@@ -1,0 +1,11 @@
+{
+  "eval_id": 2,
+  "eval_name": "go-state-read",
+  "grading": {
+    "reads_state": {"text": "读取 STATE.md", "passed": true, "evidence": "第一步读取项目根目录 STATE.md，提取所有字段"},
+    "identifies_active_change": {"text": "识别活跃 Change 为 user-auth", "passed": true, "evidence": "解析活跃 Change：user-auth，阶段 3-开发，任务 T02"},
+    "routes_to_current_stage": {"text": "路由到 3-开发阶段（继续当前阶段）", "passed": true, "evidence": "当前阶段 3-开发，用户说 go 意味着继续当前阶段工作"},
+    "detects_legacy_format": {"text": "检测到旧格式 STATE.md 并触发迁移或降级", "passed": true, "evidence": "检测旧格式 → 执行迁移（创建表格索引+per-change STATE）→ validate_state.py 校验"},
+    "role_declared": {"text": "执行角色声明", "passed": true, "evidence": "流程走完读状态→路由→闸门检查→角色声明（开发员角色）"}
+  }
+}

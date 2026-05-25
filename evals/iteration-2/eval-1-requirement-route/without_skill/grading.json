@@ -1,0 +1,11 @@
+{
+  "eval_id": 1,
+  "eval_name": "requirement-route",
+  "grading": {
+    "routes_to_requirement": {"text": "路由到 0-需求阶段", "passed": false, "evidence": "直接产出完整实现方案（前端代码+后端代码+排期），没有需求阶段流程"},
+    "pm_role_declared": {"text": "产品经理角色声明", "passed": false, "evidence": "无角色声明，直接以开发者视角产出代码"},
+    "generates_change_id": {"text": "生成或提议 change-id", "passed": false, "evidence": "无 change-id 概念"},
+    "clarifies_dimensions": {"text": "反问澄清细节（why/who/what/when 中至少 2 个维度）", "passed": false, "evidence": "未反问任何维度，直接按用户描述实现。没有问为什么做、给谁用"},
+    "no_premature_implementation": {"text": "不直接写代码或设计方案", "passed": false, "evidence": "直接写了完整的 Next.js 前端组件 + Express 后端 API + 3天排期"}
+  }
+}

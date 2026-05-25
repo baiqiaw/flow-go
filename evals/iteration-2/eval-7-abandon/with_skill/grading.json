@@ -1,0 +1,11 @@
+{
+  "eval_id": 7,
+  "eval_name": "abandon-flow",
+  "grading": {
+    "routes_to_abandon": {"text": "路由到废弃流程", "passed": true, "evidence": "路由表匹配：废弃/放弃/abandon/cancel → 废弃流程 → 项目经理"},
+    "pm_role": {"text": "项目经理角色", "passed": true, "evidence": "角色声明为项目经理"},
+    "confirms_abandon_scope": {"text": "确认废弃目标和影响评估", "passed": true, "evidence": "影响评估：阶段1-设计（无代码提交、无并行依赖、设计阶段即终止）"},
+    "no_unconfirmed_deletion": {"text": "不直接删除文件（需要确认）", "passed": true, "evidence": "结构化执行：创建ABANDONED.md → 移动到archive/abandoned/ → 更新索引 → 清理STATE"},
+    "mentions_artifacts": {"text": "提到写 ABANDONED.md 和更新索引", "passed": true, "evidence": "提到了 ABANDONED.md、ARCHIVE-INDEX.md、清理STATE.md"}
+  }
+}

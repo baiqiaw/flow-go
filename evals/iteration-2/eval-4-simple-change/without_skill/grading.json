@@ -1,0 +1,11 @@
+{
+  "eval_id": 4,
+  "eval_name": "simple-change",
+  "grading": {
+    "routes_to_requirement": {"text": "路由到 0-需求阶段（不跳过需求）", "passed": false, "evidence": "直接表示要帮忙改按钮颜色，问了哪个按钮/什么红色，没有需求阶段流程"},
+    "pm_role": {"text": "产品经理角色", "passed": false, "evidence": "无角色声明，直接以开发者视角回应"},
+    "no_direct_code_change": {"text": "不直接修改代码", "passed": false, "evidence": "请用户提供文件路径或组件名称以便直接定位修改"},
+    "clarification_gate": {"text": "完成澄清门控（即使看起来简单也要走流程）", "passed": false, "evidence": "问了3个技术问题（哪个按钮/什么红色/背景还是文字），但没有需求澄清（为什么改/给谁用/验收标准）"},
+    "suggests_shortest_path": {"text": "可能建议最短路径但不跳过需求阶段", "passed": false, "evidence": "无路径概念，直接定位修改"}
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "eval_id": 1,
+  "eval_name": "requirement-route",
+  "prompt": "我想给我们的内部管理系统加一个文件上传功能，支持拖拽上传，单个文件最大 50MB，上传后可以在列表里预览和删除。现在用的是 Next.js 前端 + Express 后端，文件存在本地磁盘。大概这周内要搞定。",
+  "assertions": [
+    {"text": "路由到 0-需求阶段", "name": "routes_to_requirement"},
+    {"text": "产品经理角色声明", "name": "pm_role_declared"},
+    {"text": "生成或提议 change-id", "name": "generates_change_id"},
+    {"text": "反问澄清细节（why/who/what/when 中至少 2 个维度）", "name": "clarifies_dimensions"},
+    {"text": "不直接写代码或设计方案", "name": "no_premature_implementation"}
+  ]
+}

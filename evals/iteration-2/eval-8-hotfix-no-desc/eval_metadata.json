@@ -1,0 +1,13 @@
+{
+  "eval_id": 8,
+  "eval_name": "hotfix-no-description",
+  "prompt": "热修",
+  "files": [],
+  "assertions": [
+    {"text": "路由到热修流程", "name": "routes_to_hotfix"},
+    {"text": "开发员→技术经理角色", "name": "correct_roles"},
+    {"text": "要求用户提供 bug 描述", "name": "requests_bug_description"},
+    {"text": "不直接开始修复（无描述时等待输入）", "name": "waits_for_description"},
+    {"text": "提到 P 等级判定流程", "name": "mentions_p_level"}
+  ]
+}

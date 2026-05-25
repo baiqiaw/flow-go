@@ -4,22 +4,13 @@ description: >
   6 角色 8 阶段 AI 开发流程编排。输入 go 即可自动路由到下一步。
   角色包括：产品经理、项目经理、技术经理、开发员、测试员、运维。
   阶段流程：需求→设计→任务→开发→测试→审查→部署→验收。
-  MUST trigger when the user says: "go", "/go", "继续", "下一步", "next",
-  "新需求", "设计", "拆任务", "开发", "测试", "审查", "部署", "验收",
-  "归档", "archive", "收工", "这个做完了",
-  "废弃", "放弃", "abandon", "cancel",
-  "排队", "pipeline", "backlog",
-  "中断", "暂停", "interrupt", "并行", "parallel",
-  "清理归档", "归档维护",
-  "热修", "hotfix", "紧急修复", "修复bug", "修bug",
-  "回溯", "recall", "接着上次", "resume",
-  "保存", "save", "整理", "neat", "同步", "sync up", "tidy up docs", "update memory",
-  "clean up docs", "/sync", "/neat", "同步一下", "整理文档", "整理一下",
-  "更新记忆", "梳理一下", "收尾",
-  "进化分析", "反思一下", "检查进化", "进化信号", "进化状态", "归因",
-  "飞轮巡检", "飞轮报告", "周报", "标记结果", "更新 outcome",
-  "轨迹分析", "gap 分析", "校准评分", "校准权重",
-  或任何描述新功能/新需求的短语（且当前无活跃 change）。
+  MUST trigger when the user says any of these:
+  - 流程推进：go / 继续 / 下一步 / next
+  - 阶段直达：新需求 / 设计 / 拆任务 / 开发 / 测试 / 审查 / 部署 / 验收
+  - 特殊流程：热修 / hotfix / 修复bug / 修bug / 归档 / 废弃 / 回溯 / 接着上次 / resume
+  - 管理操作：排队 / 中断 / 并行 / 保存 / 整理 / 同步 / 进化分析 / 飞轮巡检 / 周报
+  - 收尾操作：收工 / 收尾 / 归档维护 / 归因 / 校准
+  - 或任何描述新功能/新需求的短语（且当前无活跃 change）。
   Cross-platform: works on Claude Code, OpenAI Codex, OpenCode, and OpenClaw.
 ---
 
@@ -105,92 +96,9 @@ description: >
 
 ## 第二步 · 加载配置（可选）
 
-读取用户偏好配置（按优先级）：
-1. 项目级 `.flowgo-config`（项目根目录）
-2. 用户级 `~/.flowgo-config`（HOME 目录）
-3. 内置默认值
+读取用户偏好配置（按优先级）：项目级 `.flowgo-config` → 用户级 `~/.flowgo-config` → 内置默认值。
 
-**支持的配置项**：
-| 配置项 | 默认值 | 说明 |
-|--------|--------|------|
-| `test_rounds` | 3 | 4-测试阶段单轮修复上限 |
-| `test_depth` | standard | 4-测试阶段默认深度（smoke / standard / deep） |
-| `max_files_per_task` | 10 | 3-开发阶段单任务改动文件上限 |
-| `auto_sync` | true | 决策信号自动触发知识库受作用域同步 |
-| `priority_framework` | MoSCoW | 2-任务阶段默认优先级框架（auto=按决策树自动选择，MoSCoW/WSJF/RICE/ICE/MCDA=强制指定） |
-| `explain_level` | default | 解释详细度（default / terse） |
-| `evolution_mode` | auto | 进化分析模式（auto=自动触发 / off=关闭） |
-| `complexity_threshold` | 5 | blast-radius 文件数阈值 |
-| `bitter_pill_auto` | true | 归档后自动触发苦丸审计 |
-| `preflight_check` | true | 2-任务阶段启用预检环（反幻觉+粒度+上下文预算） |
-| `context_budget_mode` | auto | 上下文预算模式（auto=自动估算 / manual=手动填写 / off=关闭） |
-| `flywheel_min_samples` | 3 | 飞轮分析最小轨迹样本数 |
-| `flywheel_gap_threshold` | 1.5 | Gap 分析偏差阈值（分） |
-| `flywheel_outcome_check` | true | 是否自动检测归档后 outcome |
-| `flywheel_outcome_days` | 7 | outcome 自动检测窗口（天） |
-| `context_summarize` | false | 是否默认启用上下文摘要（false=全文加载，true=摘要加载） |
-| `trace_auto_collect` | true | 归档时是否自动采集轨迹 |
-| `user_input_capture` | true | 是否记录用户输入到 user-inputs.jsonl |
-| `guard_enabled` | true | 3-开发阶段启用 Guard 回归防护（true=每个 task 完成后运行 guard / false=跳过） |
-| `guard_timeout` | 30 | Guard 命令超时秒数，超时视为通过并告警（不阻塞） |
-| `git_memory_depth` | 20 | 回溯/精炼环读取 git 历史的 commit 数量 |
-| `stagnation_patience` | 3 | 3-开发/4-测试阶段连续失败多少轮触发 Plateau 告警 |
-| `iteration_log` | true | 是否在 .specs/<id>/iterations.tsv 记录结构化迭代日志 |
-
-**配置格式**（YAML，每行一个键值对）：
-```yaml
-test_rounds: 3
-test_depth: standard
-max_files_per_task: 10
-auto_sync: true
-priority_framework: MoSCoW  # 或 auto / WSJF / RICE / ICE / MCDA
-explain_level: default
-preflight_check: true
-context_budget_mode: auto
-flywheel_min_samples: 3
-flywheel_gap_threshold: 1.5
-flywheel_outcome_check: true
-flywheel_outcome_days: 7
-context_summarize: false
-trace_auto_collect: true
-user_input_capture: true
-guard_enabled: true
-guard_timeout: 30
-git_memory_depth: 20
-stagnation_patience: 3
-iteration_log: true
-```
-
-### Terse 模式压缩规则
-
-> 当 `explain_level: terse` 时，所有角色输出遵循以下压缩规则。借鉴 caveman 方法论——保留全部技术实质，只砍填充词。
-
-**删除项**：
-- 冠词（一个/这个/那个）
-- 填充词（其实/实际上/简单来说/基本上/当然）
-- 寒暄（好的/当然可以/没问题/很高兴）
-- 模糊修饰（大概/可能/也许）
-- 长同义词替换（用"大"不用"广泛的"，用"改"不用"实现一个解决方案来"）
-
-**保留项**：
-- 技术术语精确不变（变量名/API名/配置项原文）
-- 代码块完整不变
-- 错误信息原文引用
-- 数据/指标精确值
-
-**输出格式**：`[对象] [动作] [原因]。[下一步]。`
-
-**示例**：
-- 不是："好的！这个问题的原因可能是 React 组件在每次渲染时创建了新的内联对象引用，导致 props 比较失败触发重新渲染。建议使用 useMemo 来缓存这个对象。"
-- 而是："内联 obj prop → 新 ref → 重新渲染。用 `useMemo`。"
-
-**安全自动退出**：遇到以下场景时自动退出 terse 模式，恢复完整表达：
-- 安全警告（密钥泄露/权限问题/数据风险）
-- 破坏性操作确认（删除/覆盖/重置）
-- 多步骤序列（顺序混乱会误读）
-- 用户请求澄清
-
-退出时输出完整信息，事后自动恢复 terse。
+> 完整配置项清单和默认值见 `references/configuration.md`。关键配置项：`explain_level`（terse 时加载 `references/terse-mode.md`）、`evolution_mode`（off 时跳过进化分析）、`guard_enabled`（3-开发阶段回归防护）。
 
 ## 第三步 · 意图路由
 
@@ -430,46 +338,11 @@ flow-go 流程中**只允许调用以下 skill**。未列出的 skill 一律禁�
 
 ### MCP 扩展点（可选）
 
-flow-go 默认以文件驱动（STATE.md / .specs/），不依赖外部 MCP。以下 MCP 集成为可选增强，需要用户配置后才能使用。
+flow-go 默认以文件驱动，不依赖外部 MCP。可选集成 GitHub / Jira / Slack MCP，需要用户配置后才能使用。
 
-| MCP Server | 适用阶段 | 用途 | 回退方案 |
-|-----------|---------|------|---------|
-| GitHub MCP | 3-开发 / 5-审查 / 6-部署 | 自动创建 issue 关联 change、PR 创建与链接、CI 状态检查 | 手动 git 操作 + 文件记录 |
-| Jira MCP | 0-需求 / 2-任务 / 7-验收 | 需求同步到 Jira issue、任务与 sprint 关联、验收状态更新 | 纯文件工件（REQUIREMENT/TASK/UAT） |
-| Slack MCP | 7-验收后 | 验收结果通知团队频道 | 手动复制 UAT 摘要 |
+> 支持的 MCP Server、命令示例和使用原则见 `references/mcp-integration.md`。
 
-**MCP 命令示例**：
-
-```bash
-# ── GitHub MCP（3-开发阶段）──
-# 创建 issue 关联 change
-mcp__github__create_issue owner="myorg" repo="myrepo" title="[CH-001] 用户登录功能" body="关联 Change: CH-20240315-001"
-
-# 创建 PR 并关联
-mcp__github__create_pull_request owner="myorg" repo="myrepo" title="feat: 用户登录功能 (CH-001)" head="feat/login" base="main"
-
-# 检查 CI 状态
-mcp__github__pull_request_read method="get_check_runs" owner="myorg" repo="myrepo" pullNumber=42
-
-# ── Jira MCP（0-需求阶段）──
-# 需求同步到 Jira Epic
-mcp__jira__create_issue project="PROJ" summary="用户登录功能" type="Epic" description="Change-ID: CH-20240315-001"
-
-# 任务关联到 Sprint
-mcp__jira__create_issue project="PROJ" summary="T01-后端登录API" type="Story" parent="PROJ-100"
-
-# 验收后更新状态
-mcp__jira__transition_issue issue="PROJ-100" status="Done"
-
-# ── Slack MCP（7-验收后）──
-# 验收结果通知
-mcp__slack__post_message channel="#team" text="✅ CH-001 用户登录功能验收通过，评分 85/100 (A级)"
-```
-
-**使用原则**：
-- MCP 数据为辅、文件为主。STATE.md（项目级索引）+ `.specs/<id>/STATE.md`（change 级详情）始终是唯一状态源
-- MCP 不可用时自动回退到文件方案，不阻塞流程
-- MCP 操作需在阶段步骤中显式声明（如「可选：如已配置 GitHub MCP，创建 issue 关联 change」）
+核心原则：MCP 数据为辅、文件为主。MCP 不可用时自动回退到文件方案。
 
 ## 第七步 · 状态更新
 
@@ -481,51 +354,16 @@ mcp__slack__post_message channel="#team" text="✅ CH-001 用户登录功能验�
 - **启动新 change**：创建 `.specs/<id>/STATE.md` + 在 STATE.md 索引表添加新行
 - **归档**：从 STATE.md 索引表移除该 change 行 + 删除 `.specs/<id>/STATE.md`（归档/废弃流程自身步骤中完成，此处不再重复）
 - **轨迹采集触发**（配置项 `trace_auto_collect` 控制，默认 true）：归档流程步骤 4.5 已在 `special-flows.md` 中定义，此处仅声明配置项引用。设为 false 时跳过轨迹采集
-- **中断流程**（用户请求暂停/切换 change 时触发）：中断流程在 `special-flows.md` 中定义。状态更新规则：PIPELINE.md 中状态改为 `interrupted`，`.specs/<change-id>/STATE.md` 更新 `中断任务` 字段记录中断阶段
-- **Pipeline 衔接**（归档流程完成后触发）：归档流程内部步骤 8.5 已在 `special-flows.md` 中定义（读 PIPELINE.md → 找 pending → 写 Pipeline 待续 → 提示用户）。步骤 7 此处声明：归档流程完成后如 `Pipeline 待续` 已被写入，在状态更新时输出衔接提示
-- **中断流程**（用户请求暂停/切换 change 时触发）：中断流程在 `special-flows.md` 中定义。STATE.md 更新规则：PIPELINE.md 中状态改为 `interrupted`，STATE.md 更新 `中断任务` 字段记录中断阶段，`活跃 Change` 可清空
+- **中断流程**（用户请求暂停/切换 change 时触发）：中断流程在 `special-flows.md` 中定义。状态更新：PIPELINE.md 状态改为 `interrupted`，`.specs/<change-id>/STATE.md` 更新 `中断任务` 字段，STATE.md `活跃 Change` 可清空
+- **Pipeline 衔接**（归档流程完成后触发）：归档流程内部步骤 8.5 已在 `special-flows.md` 中定义。归档流程完成后如 `Pipeline 待续` 已被写入，在状态更新时输出衔接提示
 - **CONTEXT/ADR 持久化检查**：设计阶段完成时，如产出了新 ADR（`.specs/adr/` 下有新文件），输出「📜 新增 N 条 ADR：{ADR 标题列表}」。归档时 `.specs/CONTEXT.md` 和 `.specs/adr/` 不删除（跨 change 持久化），仅清理 `.specs/<id>/` 下的 change 级文件
 - **决策同步检查**：grep 本阶段「决策信号」，逐条检查产出工件是否匹配
   - 有匹配 → 输出「🔄 决策同步：N 条新决策，执行受作用域同步」然后加载 `references/sync-workflow.md` 执行受作用域同步
   - 无匹配 → 跳过
-  - **例外——归档/验收已内联同步**：归档流程步骤 9.6 和 7-验收步骤 8 已各自内联执行同步（归档→受作用域同步，验收→全量同步），不依赖此信号检查机制。此处不再重复触发
-- **自动进化触发**（配置项 `evolution_mode` 控制，默认 `auto`，设为 `off` 则跳过全部进化分析）：归档完成后按健康评分走双路径
-  - **CAPTURE 路径**（成功经验）：读 `health-history.jsonl` 最近一条，评分 ≥ 8.0 → 执行 `evolution_reflect.py --mode capture --specs-dir .specs/<id> --health-score <分>` → 成功策略存入 `.specs/evolution/strategies.jsonl` → 输出「🏆 策略已捕获：{approach}（评分 {score}）」
-  - **FIX 路径**（失败改进）：以下条件满足任一即触发
-    1. 连续 3 个 Change 健康评分下降（读 `health-history.jsonl` 最近 3 条）
-    2. 同一归因标签在最近 5 个 Change 中出现 ≥3 次（读 `.specs/evolution/` 下的信号历史）
-    3. **首次进化**：`health-history.jsonl` 不存在或条目 < 3，且 `evolution_signal.py` 检测到 ≥1 个强信号 → 输出「🆕 首次进化：{信号摘要}」→ 直接执行 FIX 流程（跳过常规门槛）
-  - FIX 触发时 → 输出「🧬 进化信号已触发：{原因}，正在运行进化分析」→ 执行 `evolution_signal.py` → `evolution_reflect.py --mode reflect` → 展示假设和归因摘要
-  - 有顿悟时 → 额外输出「💡 顿悟：{root_cause}（已出现 N 次）→ 建议：{advice}」，请用户确认是否写入 LESSONS.md
-  - **BITTER PILL 路径**（规则自审计）：归档后自动执行 `python3 references/scripts/bitter_pill_audit.py --output .specs/<id>/BITTER-PILL.md`（`--skill-dir` 可选，默认自动发现）→ 产出 KEEP/REVIEW/CANDIDATE 审计报告 → CANDIDATE 项需用户逐条确认 → 输出「💊 苦丸审计完成：KEEP N / REVIEW N / CANDIDATE N」
-  - **SUGGEST 路径**（改进建议，归档后触发，与 CAPTURE/FIX 同级）：
-    - 触发条件：`.specs/evolution/skill-feedback.jsonl` 存在且含 `processed=false` 的条目
-    - 路径行为：
-      1. 读取未处理的 skill 反馈，按频率排序
-      2. 运行 `evolution_reflect.py --mode suggest --feedback .specs/evolution/skill-feedback.jsonl --output .specs/evolution/<id>-suggestions.json`
-      3. 生成改进假设报告
-      4. 展示假设摘要，请用户逐条确认
-      5. 用户确认的改进 → 记录到建议列表，由用户手动执行修改
-      6. 全部处理完成后，将 skill-feedback.jsonl 中的对应条目标记为 `processed=true`
-    - **安全原则**：SUGGEST 路径不自动修改 SKILL.md 或 references/ 下的任何文件
-    - **SUGGEST 不可自动执行的症状清单**（出现任一条即需用户逐条确认）：
-      1. 建议删除现有闸门检查或 HARD-GATE 机制
-      2. 建议修改角色红线的核心边界
-      3. 建议增加新的 Skill 链式调用白名单条目
-      4. 建议绕过 STATE.md 状态管理直接操作文件
-- **飞轮巡检**（手动触发：`飞轮巡检` / `飞轮报告` / `周报`；周期触发：`/loop 7d "运行 flow-go 飞轮巡检"`）：
-- **轻量进化检查**（每个阶段完成时自动执行，不依赖归档）：
-  - 从本阶段工件中检测即时信号：
-    - `user_correction`：用户在阶段内明确纠正了输出或行为（如"不对""改一下""应该是"）
-    - `gate_blocked`：闸门检查未通过被阻断
-  - 检测到任一 → 输出「⚡ 即时信号：{类型} → 建议：{advice}」
-  - 不写文件、不调脚本、纯文本输出
-  - 无信号 → 静默跳过
-  1. 运行 `gap_analyzer.py` → 输出 Gap 报告
-  2. 运行 `health_calibration.py` → 输出校准报告（样本 ≥ `flywheel_min_samples` 时）
-  3. 检查跨 Change 聚合顿悟 → 复用 `evolution_reflect.py` 写入逻辑
-  4. 生成 `EVOLUTION-WEEKLY-YYYYMMDD.md`（模板见 `meta-artifacts.md`）
-  5. 顿悟候选请用户确认
+  - **例外——归档/验收已内联同步**：归档流程步骤 9.6 和 7-验收步骤 8 已各自内联执行同步，不依赖此信号检查机制
+- **自动进化触发**（配置项 `evolution_mode` 控制，默认 `auto`，设为 `off` 则跳过全部进化分析）：归档完成后走 CAPTURE / FIX / BITTER PILL / SUGGEST 四路径。详细触发条件和脚本参数见 `references/evolution-paths.md`
+- **飞轮巡检**（手动触发：`飞轮巡检` / `飞轮报告` / `周报`）：运行 `gap_analyzer.py` + `health_calibration.py`，生成 `EVOLUTION-WEEKLY-YYYYMMDD.md`
+- **轻量进化检查**（每个阶段完成时自动执行，不依赖归档）：检测 `user_correction` / `gate_blocked` 即时信号，检测到输出「⚡ 即时信号」，无信号静默跳过。不写文件、不调脚本
 
 ## 自检（产出路由声明前）
 

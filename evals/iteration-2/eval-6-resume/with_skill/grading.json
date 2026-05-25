@@ -1,0 +1,11 @@
+{
+  "eval_id": 6,
+  "eval_name": "resume-flow",
+  "grading": {
+    "routes_to_resume": {"text": "路由到回溯流程", "passed": true, "evidence": "路由表匹配：继续/接着上次/resume → 回溯流程"},
+    "detects_interrupted_task": {"text": "检测到中断任务 T02 非空", "passed": true, "evidence": "中断任务 T02 非空 → 优先级最高，走回溯流程"},
+    "prioritizes_interrupted_task": {"text": "优先处理中断任务 T02", "passed": true, "evidence": "T02 优先于 T03（当前任务），执行回溯流程步骤恢复中断任务上下文"},
+    "provides_summary": {"text": "输出项目摘要和推荐下一步", "passed": true, "evidence": "输出结构化恢复摘要：活跃Change、当前阶段、中断/当前任务、推荐下一步"},
+    "reads_recent_summaries": {"text": "读取最近 SUMMARY.md 进行上下文恢复", "passed": true, "evidence": "尝试读取 SUMMARY.md（评估环境无文件，但流程正确执行了该步骤）"}
+  }
+}

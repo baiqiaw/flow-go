@@ -1,0 +1,13 @@
+{
+  "eval_id": 4,
+  "eval_name": "simple-change",
+  "prompt": "我需要把这个按钮的颜色改成红色",
+  "files": [],
+  "assertions": [
+    {"text": "路由到 0-需求阶段（不跳过需求）", "name": "routes_to_requirement"},
+    {"text": "产品经理角色", "name": "pm_role"},
+    {"text": "不直接修改代码", "name": "no_direct_code_change"},
+    {"text": "完成澄清门控（即使看起来简单也要走流程）", "name": "clarification_gate"},
+    {"text": "可能建议最短路径但不跳过需求阶段", "name": "suggests_shortest_path"}
+  ]
+}

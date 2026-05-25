@@ -1,0 +1,11 @@
+{
+  "eval_id": 2,
+  "eval_name": "go-state-read",
+  "grading": {
+    "reads_state": {"text": "读取 STATE.md", "passed": true, "evidence": "识别了活跃 Change user-auth 和阶段 3-开发"},
+    "identifies_active_change": {"text": "识别活跃 Change 为 user-auth", "passed": true, "evidence": "提到活跃 Change user-auth"},
+    "routes_to_current_stage": {"text": "路由到 3-开发阶段（继续当前阶段）", "passed": false, "evidence": "识别了阶段但没有执行任何路由流程，只是询问 T02 的内容"},
+    "detects_legacy_format": {"text": "检测到旧格式 STATE.md 并触发迁移或降级", "passed": false, "evidence": "无格式检测，直接读取内容"},
+    "role_declared": {"text": "执行角色声明", "passed": false, "evidence": "无角色声明"}
+  }
+}

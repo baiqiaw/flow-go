@@ -1,0 +1,11 @@
+{
+  "eval_id": 4,
+  "eval_name": "simple-change",
+  "grading": {
+    "routes_to_requirement": {"text": "路由到 0-需求阶段（不跳过需求）", "passed": true, "evidence": "路由到 0-需求，产品经理角色，未跳过任何阶段"},
+    "pm_role": {"text": "产品经理角色", "passed": true, "evidence": "✅ 当前角色：产品经理"},
+    "no_direct_code_change": {"text": "不直接修改代码", "passed": true, "evidence": "走了完整需求流程，未写任何代码"},
+    "clarification_gate": {"text": "完成澄清门控（即使看起来简单也要走流程）", "passed": true, "evidence": "4维度评估：What✅、Why可推断、Who可推断、When不充分。执行了提问"},
+    "suggests_shortest_path": {"text": "可能建议最短路径但不跳过需求阶段", "passed": true, "evidence": "复杂度判定 LITE，建议最短路径（0→3→4→7），但不跳过需求阶段本身"}
+  }
+}

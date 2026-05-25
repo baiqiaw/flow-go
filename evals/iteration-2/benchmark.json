@@ -1,0 +1,284 @@
+{
+  "skill_name": "flow-go",
+  "iteration": 2,
+  "timestamp": "2026-05-25T12:00:00",
+  "summary": {
+    "with_skill": {
+      "pass_rate": 1.0,
+      "total_assertions": 39,
+      "passed": 39,
+      "avg_duration_seconds": 165.4,
+      "avg_tokens": 0
+    },
+    "without_skill": {
+      "pass_rate": 0.49,
+      "total_assertions": 39,
+      "passed": 19,
+      "avg_duration_seconds": 109.7,
+      "avg_tokens": 0
+    },
+    "delta": {
+      "pass_rate": 0.51,
+      "pass_rate_pct": "+51%"
+    }
+  },
+  "evals": [
+    {
+      "eval_id": 1,
+      "eval_name": "requirement-route",
+      "prompt": "我想给我们的内部管理系统加一个文件上传功能...",
+      "with_skill": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "total": 5,
+        "duration_seconds": 223.3,
+        "assertions": {
+          "routes_to_requirement": true,
+          "pm_role_declared": true,
+          "generates_change_id": true,
+          "clarifies_dimensions": true,
+          "no_premature_implementation": true
+        }
+      },
+      "without_skill": {
+        "pass_rate": 0.0,
+        "passed": 0,
+        "total": 5,
+        "duration_seconds": 89.9,
+        "assertions": {
+          "routes_to_requirement": false,
+          "pm_role_declared": false,
+          "generates_change_id": false,
+          "clarifies_dimensions": false,
+          "no_premature_implementation": false
+        }
+      }
+    },
+    {
+      "eval_id": 2,
+      "eval_name": "go-state-read",
+      "prompt": "go",
+      "with_skill": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "total": 5,
+        "duration_seconds": 153.2,
+        "assertions": {
+          "reads_state": true,
+          "identifies_active_change": true,
+          "routes_to_current_stage": true,
+          "detects_legacy_format": true,
+          "role_declared": true
+        }
+      },
+      "without_skill": {
+        "pass_rate": 0.4,
+        "passed": 2,
+        "total": 5,
+        "duration_seconds": 214.0,
+        "assertions": {
+          "reads_state": true,
+          "identifies_active_change": true,
+          "routes_to_current_stage": false,
+          "detects_legacy_format": false,
+          "role_declared": false
+        }
+      }
+    },
+    {
+      "eval_id": 3,
+      "eval_name": "archive-flow",
+      "prompt": "归档",
+      "with_skill": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "total": 5,
+        "duration_seconds": 250.0,
+        "assertions": {
+          "routes_to_archive": true,
+          "checks_active_change": true,
+          "lists_existing_artifacts": true,
+          "confirms_archive_reason": true,
+          "no_unconfirmed_deletion": true
+        }
+      },
+      "without_skill": {
+        "pass_rate": 0.6,
+        "passed": 3,
+        "total": 5,
+        "duration_seconds": 67.0,
+        "assertions": {
+          "routes_to_archive": true,
+          "checks_active_change": true,
+          "lists_existing_artifacts": false,
+          "confirms_archive_reason": true,
+          "no_unconfirmed_deletion": true
+        }
+      }
+    },
+    {
+      "eval_id": 4,
+      "eval_name": "simple-change",
+      "prompt": "我需要把这个按钮的颜色改成红色",
+      "with_skill": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "total": 5,
+        "duration_seconds": 196.4,
+        "assertions": {
+          "routes_to_requirement": true,
+          "pm_role": true,
+          "no_direct_code_change": true,
+          "clarification_gate": true,
+          "suggests_shortest_path": true
+        }
+      },
+      "without_skill": {
+        "pass_rate": 0.0,
+        "passed": 0,
+        "total": 5,
+        "duration_seconds": 108.3,
+        "assertions": {
+          "routes_to_requirement": false,
+          "pm_role": false,
+          "no_direct_code_change": false,
+          "clarification_gate": false,
+          "suggests_shortest_path": false
+        }
+      }
+    },
+    {
+      "eval_id": 5,
+      "eval_name": "malformed-state",
+      "prompt": "go",
+      "with_skill": {
+        "pass_rate": 1.0,
+        "passed": 4,
+        "total": 4,
+        "duration_seconds": 166.7,
+        "assertions": {
+          "detects_incomplete_state": true,
+          "reports_specific_issues": true,
+          "degrades_gracefully": true,
+          "no_partial_routing": true
+        }
+      },
+      "without_skill": {
+        "pass_rate": 0.75,
+        "passed": 3,
+        "total": 4,
+        "duration_seconds": 197.4,
+        "assertions": {
+          "detects_incomplete_state": true,
+          "reports_specific_issues": true,
+          "degrades_gracefully": false,
+          "no_partial_routing": true
+        }
+      }
+    },
+    {
+      "eval_id": 6,
+      "eval_name": "resume-flow",
+      "prompt": "继续上次",
+      "with_skill": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "total": 5,
+        "duration_seconds": 269.5,
+        "assertions": {
+          "routes_to_resume": true,
+          "detects_interrupted_task": true,
+          "prioritizes_interrupted_task": true,
+          "provides_summary": true,
+          "reads_recent_summaries": true
+        }
+      },
+      "without_skill": {
+        "pass_rate": 0.2,
+        "passed": 1,
+        "total": 5,
+        "duration_seconds": 39.8,
+        "assertions": {
+          "routes_to_resume": false,
+          "detects_interrupted_task": true,
+          "prioritizes_interrupted_task": false,
+          "provides_summary": false,
+          "reads_recent_summaries": false
+        }
+      }
+    },
+    {
+      "eval_id": 7,
+      "eval_name": "abandon-flow",
+      "prompt": "废弃这个需求",
+      "with_skill": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "total": 5,
+        "duration_seconds": 162.7,
+        "assertions": {
+          "routes_to_abandon": true,
+          "pm_role": true,
+          "confirms_abandon_scope": true,
+          "no_unconfirmed_deletion": true,
+          "mentions_artifacts": true
+        }
+      },
+      "without_skill": {
+        "pass_rate": 0.6,
+        "passed": 3,
+        "total": 5,
+        "duration_seconds": 164.9,
+        "assertions": {
+          "routes_to_abandon": true,
+          "pm_role": false,
+          "confirms_abandon_scope": true,
+          "no_unconfirmed_deletion": false,
+          "mentions_artifacts": true
+        }
+      }
+    },
+    {
+      "eval_id": 8,
+      "eval_name": "hotfix-no-description",
+      "prompt": "热修",
+      "with_skill": {
+        "pass_rate": 1.0,
+        "passed": 5,
+        "total": 5,
+        "duration_seconds": 61.0,
+        "assertions": {
+          "routes_to_hotfix": true,
+          "correct_roles": true,
+          "requests_bug_description": true,
+          "waits_for_description": true,
+          "mentions_p_level": true
+        }
+      },
+      "without_skill": {
+        "pass_rate": 0.6,
+        "passed": 3,
+        "total": 5,
+        "duration_seconds": 86.4,
+        "assertions": {
+          "routes_to_hotfix": true,
+          "correct_roles": false,
+          "requests_bug_description": true,
+          "waits_for_description": true,
+          "mentions_p_level": false
+        }
+      }
+    }
+  ],
+  "analyst_observations": [
+    "ALL 39 assertions passed with skill (100% pass rate) — flow-go handles all 8 test scenarios correctly: requirement routing, state reading, archive, simple change, malformed state, resume, abandon, and hotfix",
+    "Without skill, the overall pass rate is 49% (19/39). The biggest gaps are in structured process flow (routes_to_requirement, clarification_gate, pm_role_declared) which NEVER pass without the skill",
+    "Non-discriminating assertions (pass with or without skill): reads_state (eval-2), identifies_active_change (eval-2), routes_to_archive (eval-3), detects_incomplete_state (eval-5), reports_specific_issues (eval-5), no_partial_routing (eval-5), detects_interrupted_task (eval-6), routes_to_abandon (eval-7), confirms_abandon_scope (eval-7), mentions_artifacts (eval-7), routes_to_hotfix (eval-8), requests_bug_description (eval-8), waits_for_description (eval-8) — AI naturally handles these",
+    "Key discriminating assertions that NEVER pass without skill: pm_role_declared, generates_change_id, clarifies_dimensions, detects_legacy_format, role_declared, routes_to_resume, prioritizes_interrupted_task, correct_roles, mentions_p_level — these require the skill's structured process",
+    "eval-1 (requirement) and eval-4 (simple change) show the starkest contrast: 0% without skill vs 100% with skill. AI defaults to directly implementing code instead of routing through a structured workflow",
+    "Token cost tradeoff: with_skill takes ~1.5x longer (165s vs 110s avg) but the extra time is spent on proper state management, gate checks, role declarations, and structured workflows — this is the expected and desirable behavior",
+    "eval-3 (archive) without_skill scores 60% — the AI naturally understands archiving but lacks the structured artifact inventory and migration handling",
+    "eval-5 (malformed state) without_skill scores 75% — close to with_skill, but fails on 'degrades_gracefully' (doesn't offer alternative path)",
+    "The skill adds the most value in scenarios requiring process discipline (requirement → design → task flow) and role-based workflow management"
+  ]
+}

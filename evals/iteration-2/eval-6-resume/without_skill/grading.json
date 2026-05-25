@@ -1,0 +1,11 @@
+{
+  "eval_id": 6,
+  "eval_name": "resume-flow",
+  "grading": {
+    "routes_to_resume": {"text": "路由到回溯流程", "passed": false, "evidence": "只是简单的'好的，继续上次'，没有回溯流程"},
+    "detects_interrupted_task": {"text": "检测到中断任务 T02 非空", "passed": true, "evidence": "提到了'T02 已中断'"},
+    "prioritizes_interrupted_task": {"text": "优先处理中断任务 T02", "passed": false, "evidence": "聚焦于当前任务 T03（'正在执行 T03'），而非优先处理中断的 T02"},
+    "provides_summary": {"text": "输出项目摘要和推荐下一步", "passed": false, "evidence": "简短提及状态，无结构化摘要"},
+    "reads_recent_summaries": {"text": "读取最近 SUMMARY.md 进行上下文恢复", "passed": false, "evidence": "表示要读取文件但未实际执行回溯流程"}
+  }
+}

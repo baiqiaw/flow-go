@@ -1,0 +1,10 @@
+{
+  "eval_id": 5,
+  "eval_name": "malformed-state",
+  "grading": {
+    "detects_incomplete_state": {"text": "检测到 STATE.md 缺少必填字段", "passed": true, "evidence": "检测到旧格式 + 缺少多个必填字段：当前任务、中断任务、Pipeline待续、并行Change、更新时间"},
+    "reports_specific_issues": {"text": "输出具体缺失问题", "passed": true, "evidence": "逐一列出缺失字段：当前任务、中断任务、Pipeline待续、并行Change、更新时间、阶段进度、路径模式"},
+    "degrades_gracefully": {"text": "降级为无状态模式或提示修复", "passed": true, "evidence": "校验不通过 → 降级为无状态模式（等同新项目）→ 路由到0-需求。同时提示'回复修复即可自动修复'"},
+    "no_partial_routing": {"text": "不直接按部分状态路由", "passed": true, "evidence": "未使用部分状态（user-auth/3-开发）路由到开发阶段，而是降级后从0-需求开始"}
+  }
+}

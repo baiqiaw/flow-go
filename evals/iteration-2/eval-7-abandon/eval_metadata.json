@@ -1,0 +1,13 @@
+{
+  "eval_id": 7,
+  "eval_name": "abandon-flow",
+  "prompt": "废弃这个需求",
+  "files": [{"path": "STATE.md", "content": "# STATE.md — flow-go 状态文件\n\n## 活跃 Change\n- legacy-api\n\n## 当前阶段\n- 1-设计\n\n## 当前任务\n- 无\n\n## 中断任务\n- 无\n\n## 阶段进度\n- 步骤 3: 技术栈选型进行中\n\n## 更新时间\n- 2026-05-15"}],
+  "assertions": [
+    {"text": "路由到废弃流程", "name": "routes_to_abandon"},
+    {"text": "项目经理角色", "name": "pm_role"},
+    {"text": "确认废弃目标和影响评估", "name": "confirms_abandon_scope"},
+    {"text": "不直接删除文件（需要确认）", "name": "no_unconfirmed_deletion"},
+    {"text": "提到写 ABANDONED.md 和更新索引", "name": "mentions_artifacts"}
+  ]
+}

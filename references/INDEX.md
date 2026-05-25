@@ -50,6 +50,10 @@ flow-go 的参考文档。SKILL.md 路由后按阶段名/工件名加载对应�
 - `sync-workflow.md` — 知识库同步工作流（全量/增量/受作用域三种模式的执行步骤和自检清单，~190 行）
 - `agent-paths.md` — 各 Agent 平台的记忆与配置路径速查（~70 行）
 - `sync-matrix.md` — 变更类型到需同步文件的映射表（~55 行）
+- `configuration.md` — 完整配置项清单和默认值（22 个配置项 + YAML 示例）
+- `terse-mode.md` — Terse 模式压缩规则（删除/保留项 + 输出格式 + 安全退出条件）
+- `mcp-integration.md` — MCP 扩展点（GitHub/Jira/Slack 命令示例 + 使用原则）
+- `evolution-paths.md` — 进化路径详细定义（CAPTURE/FIX/BITTER PILL/SUGGEST 四路径触发条件和执行步骤）
 
 ## scripts/
 
