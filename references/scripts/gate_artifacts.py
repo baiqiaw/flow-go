@@ -189,6 +189,29 @@ def check_artifacts(stage, specs_dir, complexity="standard", path_mode="full", p
         if progress_files:
             missing.append(f"存在未完成任务（{len(progress_files)} 个 PROGRESS 文件）")
 
+        # 检查 TEST.md Bug 清单是否所有严重度 = 0（防止"不是本阶段引起的"跳过）
+        test_path = os.path.join(specs_dir, "TEST.md")
+        if os.path.isfile(test_path):
+            try:
+                with open(test_path, encoding="utf-8") as f:
+                    test_content = f.read()
+                # 只在 Bug 清单表格区域内搜索，避免误报模板说明和完成条件文本
+                bug_section = re.search(
+                    r"##\s*Bug\s*清单.*?(?=\n## |\Z)", test_content, re.DOTALL
+                )
+                if bug_section:
+                    section = bug_section.group()
+                    # 在表格行（以 | 开头）中查找 ❌ 标记
+                    for row in re.findall(r"^\|.*\|$", section, re.MULTILINE):
+                        if "❌" in row:
+                            missing.append(
+                                "TEST.md Bug 清单存在 ❌ 标记"
+                                "（不允许以'不是本阶段引起的'跳过，所有 bug 必须修复到 0）"
+                            )
+                            break
+            except (OSError, UnicodeDecodeError):
+                warnings.append("无法读取 TEST.md 检查 Bug 清单状态")
+
     # ── 交叉评审 PASS 验证（阶段 1/2/3 的进入闸门） ──
     # 验证上游阶段的交叉评审已在 <change-id>-REVIEW.md 中产出且 6 维全 PASS
     # 阶段 1 需要 0-需求 评审 PASS，阶段 2 需要 1-设计 评审 PASS，阶段 3 需要 2-任务 评审 PASS
