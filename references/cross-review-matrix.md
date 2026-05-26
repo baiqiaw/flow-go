@@ -108,30 +108,44 @@ flow-go 有 3 套 6 维评审矩阵，分别用于文档层（阶段 0/1/2）、
 ...（6 维全部列出）
 
 ### 发现问题
-- {如有 FAIL，逐条列出，格式：文件:位置 — 问题描述 — 建议修复方向}
+- Critical（置信度 ≥90）：
+  - {文件:位置 — 问题描述 — 置信度 — 建议修复方向}
+- Important（置信度 80-89）：
+  - {文件:位置 — 问题描述 — 置信度 — 建议修复方向}
 - {全 PASS 则写"无"}
 
 ## 约束
 - 只评审给你看的内容，不猜测未提供的工件
 - FAIL 必须给出具体位置和修复方向，不允许模糊描述
 - 不要修改任何文件，只产出评审报告
+
+## 置信度评分
+对每个潜在问题评分 0-100：
+- 0-49：低置信度，大概率误报或不重要
+- 50-79：中置信度，真实问题但不关键
+- 80-89（Important）：高置信度，确认的真实问题
+- 90-100（Critical）：极高置信度，必须修复
+
+**仅报告置信度 ≥80 的问题。** 过滤掉低置信度发现以减少噪音。
 ```
 
 ### 各阶段调用参数
 
-| 阶段 | 评审类型 | 传入工件 | 上游工件 |
-|------|---------|---------|---------|
-| 0-需求 | 文档评审 | CHANGE.md + REQUIREMENT.md | 用户原始输入 + CONTEXT.md |
-| 1-设计 | 文档评审 | DESIGN.md | REQUIREMENT.md + CHANGE.md + CONTEXT.md |
-| 2-任务 | 文档评审 | TASK.md | DESIGN.md + REQUIREMENT.md |
-| 3-开发 | 代码评审 | git diff + TASK + DESIGN + SUMMARY | DESIGN.md |
-| 5-审查 | 质量评审 | git diff + 全部 SUMMARY | REQUIREMENT.md + DESIGN.md |
+| 阶段 | 评审类型 | 传入工件 | 上游工件 | 子代理 model |
+|------|---------|---------|---------|-------------|
+| 0-需求 | 文档评审 | CHANGE.md + REQUIREMENT.md | 用户原始输入 + CONTEXT.md | sonnet |
+| 1-设计 | 文档评审 | DESIGN.md | REQUIREMENT.md + CHANGE.md + CONTEXT.md | sonnet |
+| 2-任务 | 文档评审 | TASK.md | DESIGN.md + REQUIREMENT.md | sonnet |
+| 3-开发 | 代码评审 | git diff + TASK + DESIGN + SUMMARY | DESIGN.md | sonnet |
+| 5-审查 | 质量评审 | git diff + 全部 SUMMARY | REQUIREMENT.md + DESIGN.md | sonnet |
 
 ### 子代理约束
 
 - 子代理使用**全新上下文**（不继承主代理对话历史）
 - 子代理**只读不写**（产出评审报告由主代理写入文件）
 - 子代理**无轮数限制**（文档层），但主代理有 3 轮上限（代码层）
+- 子代理 dispatch 时指定 **model: sonnet**（探索/评审任务不需要最强模型）
+- 每个发现必须附带置信度评分（0-100），仅输出 ≥80 的发现
 
 ---
 

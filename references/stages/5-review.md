@@ -8,13 +8,24 @@
 1. 速扫各 SUMMARY 的交叉评审章节 + `<change-id>-REVIEW.md`，跳过已逐项验证的内容，聚焦跨任务交叉问题
 2. Spec 合规审查：实现是否匹配需求/设计的每一条
 3. 代码质量 6 维审查：grep `references/cross-review-matrix.md` 获取矩阵 C（质量评审）定义
-   - R1 认知过载：单函数 > 50 行 / 嵌套 > 3 层
-   - R2 变更传播：任务无关文件被改动
-   - R3 知识重复：同逻辑粘贴 2+ 处
-   - R4 偶然复杂：抽象层级超过实际需要
-   - R5 依赖混乱：业务层 import 基础设施实现
-   - R6 领域扭曲：变量名用技术词而非领域词
-   - **HEAVY 模式**：complexity == heavy 时，此步骤后强制 dispatch 独立子 Agent 进行二次 cross-review（全新上下文，避免审查盲区）
+	   dispatch 3 个 reviewer 子代理（model: sonnet），按矩阵 C 维度分组：
+
+	   | 子代理 | 覆盖维度 | prompt 聚焦 |
+	   |--------|---------|-------------|
+	   | reviewer-1 | R1 认知过载 + R3 知识重复 | 单函数长度、嵌套层级、重复逻辑 |
+	   | reviewer-2 | R2 变更传播 + R4 偶然复杂 + 安全审查 | 越界改动、过度抽象、密钥泄露 |
+	   | reviewer-3 | R5 依赖混乱 + R6 领域扭曲 | import 方向、命名一致性 |
+
+	   维度定义见 cross-review-matrix.md 矩阵 C（上方 grep 获取）。
+	   每个 reviewer 输出格式和置信度/严重度分组见 cross-review-matrix.md「置信度评分」和「输出格式」章节。
+
+	   主代理合并 3 个 reviewer 的输出：
+	   - 去重：同一位置同一问题取最高置信度
+	   - 按严重度排序后进入步骤 5（循环评审）
+
+	   **降级规则**：子代理失败 → 主代理按矩阵 C 完整 6 维单线程审查
+
+	   - **HEAVY 模式**：complexity == heavy 时，此步骤后强制 dispatch 独立子 Agent 进行二次 cross-review（全新上下文，避免审查盲区）
 4. 安全审查：`git diff --staged | grep -i "api_key\|token\|secret\|password"` + OWASP 快查
 4b. **Blast radius 验证**：`python3 references/scripts/gate_check.py --mode blast-radius --change-id <id> --project-dir <项目根>` → exceeded=true 时标记为审查发现
 5. **循环评审直到 0 问题**（所有级别）：
