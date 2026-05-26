@@ -78,9 +78,10 @@ class TestPathUtils:
 
 
 class TestValidateState:
-    """validate_state.py 核心校验逻辑"""
+    """validate_state.py 核心校验逻辑（worktree-first 格式，无索引表）"""
 
     def test_valid_state(self, tmp_project):
+        """新格式 STATE.md（无索引表）应校验通过"""
         from validate_state import validate
 
         result = validate(str(tmp_project / "STATE.md"), str(tmp_project / ".specs"))
@@ -96,6 +97,7 @@ class TestValidateState:
         assert any("为空" in e for e in result["errors"])
 
     def test_missing_fields(self, tmp_path):
+        """缺少 Pipeline 待续或更新时间字段应失败"""
         from validate_state import validate
 
         state = tmp_path / "STATE.md"
@@ -103,17 +105,29 @@ class TestValidateState:
         result = validate(str(state))
         assert not result["passed"]
 
-    def test_stage_mismatch(self, tmp_project):
-        """索引表阶段与 per-change 阶段不一致"""
-        from validate_state import validate
+    def test_discover_active_changes_no_worktree(self, tmp_path):
+        """非 git 目录应返回空列表 + 警告"""
+        from validate_state import discover_active_changes
 
-        # 修改索引表中的阶段（per-change 仍为 3-开发）
-        content = (tmp_project / "STATE.md").read_text(encoding="utf-8")
-        content = content.replace("3-开发", "1-设计", 1)
-        (tmp_project / "STATE.md").write_text(content, encoding="utf-8")
+        changes, warnings = discover_active_changes(str(tmp_path))
+        assert isinstance(changes, list)
+        assert len(changes) == 0
+        assert len(warnings) > 0  # 非 git 目录应有警告
 
-        result = validate(str(tmp_project / "STATE.md"), str(tmp_project / ".specs"))
-        assert not result["passed"]
+    def test_backward_compat_archive(self, tmp_path):
+        """旧归档格式 STATE.md（含索引表）应能正常解析不报错"""
+        from validate_state import parse_state
+
+        archive_state = tmp_path / "OLD-ARCHIVE-STATE.md"
+        archive_state.write_text(
+            "# STATE\n\n## 活跃 Change\n| change-id | 阶段 | 最后更新 |\n"
+            "|-----------|------|---------|\n| （无活跃 Change） | | |\n\n"
+            "## Pipeline 待续\n- 无\n\n## 更新时间\n- 2026-05-23\n",
+            encoding="utf-8",
+        )
+        fields, errors = parse_state(str(archive_state))
+        assert len(errors) == 0, f"旧格式不应报错: {errors}"
+        assert "Pipeline 待续" in fields
 
 
 class TestGateCheck:

@@ -59,12 +59,12 @@ description: >
 
 这是每轮对话的初始动作（横切关注点），不是编号步骤。类似于角色红线，贯穿所有阶段。
 
-- 仅在 STATE.md 有活跃 Change（索引表非空）时执行（无活跃 Change 时跳过）
+- 仅在当前位于 `change/*` worktree 中（即 `git worktree list` 发现有活跃 worktree）时执行（无活跃 worktree 时跳过）
 - 格式（每行一个 JSON 对象，append-only）：
   ```json
   {"ts":"2026-05-21T14:30:00","change_id":"xxx","stage":"3-开发","input":"用户原始输入"}
   ```
-- `change_id`：从 STATE.md 活跃 Change 索引表读取
+- `change_id`：从当前 worktree 路径推导（worktree 路径中的 `change/<id>` 提取 `<id>`）
 - `stage`：从 `.specs/<id>/STATE.md` `当前阶段` 字段读取
 - `input`：用户消息原文（保留原文，不做加工）
 - `.specs/<id>/` 目录已存在（有活跃 Change 时），直接追加
@@ -75,24 +75,20 @@ description: >
 
 ## 第一步 · 读状态
 
-1. 尝试读项目根目录 `STATE.md`。不存在 → 新项目，跳过
-2. **旧格式检测与迁移**：检查 STATE.md 中 `## 活跃 Change` 下的内容——若为非表格的单行文本（如 `- xxx`）且非 `无`，判定为旧格式。旧格式迁移步骤：
-   - (a) 读取旧格式所有字段（活跃 Change、当前阶段、当前任务、中断任务、Pipeline 待续、并行 Change、阶段进度、更新时间）
-   - (b) 生成新格式 STATE.md：活跃 Change 改为表格格式（含 change-id / 阶段 / 最后更新 列），保留 Pipeline 待续和更新时间
-   - (c) 创建 `.specs/<id>/STATE.md`：写入当前阶段、当前任务、中断任务、阶段进度、更新时间
-   - (d) 旧格式的 `并行 Change` 字段内容迁移为索引表的多行
-   - (e) 迁移完成后输出「🔄 旧格式 STATE.md 已自动迁移为新格式」
+1. 尝试读项目根目录 `STATE.md`。不存在 → 新项目，跳过（仅记录 Pipeline 待续和更新时间为空）
+2. 从 STATE.md 读取 `Pipeline 待续` 和 `更新时间` 字段（保留，供后续流程使用）
 3. 执行完整性校验：调用 `python3 references/scripts/validate_state.py --state-file STATE.md --specs-dir .specs/`。脚本不可用时回退到 grep `references/artifacts/meta-artifacts.md` 的「完整性校验」清单。校验不通过 → 输出脚本返回的具体问题，降级为"无状态"模式（等同新项目）。如脚本返回 `fixes` 字段非空 → 额外提示「可自动修复缺失字段，回复"修复"即可」
-4. 校验通过后解析活跃 Change 索引表：
-   - **活跃数 = 0**：无活跃 change，后续路由按"无活跃 change"处理
-   - **活跃数 = 1**：自动读 `.specs/<id>/STATE.md` 获取当前阶段/路径模式/当前任务/中断任务/阶段进度。将 change-id 和路径模式写入会话上下文供后续阶段使用。**零额外操作**——用户体验与旧格式完全一致
-   - **活跃数 > 1**：列出所有活跃 change（change-id + 阶段），用 AskUserQuestion 让用户选择要操作的 change → 读选中的 `.specs/<id>/STATE.md` → 将 change-id 写入会话上下文
+4. 用 `git worktree list --porcelain` 发现活跃 change worktree：
+   - 过滤输出中 `branch refs/heads/change/` 开头的行，提取 worktree 路径和 change-id（`change/` 后的部分）
+   - **worktree 数 = 0**：无活跃 change，后续路由按"无活跃 change"处理
+   - **worktree 数 = 1**：自动读该 worktree 的 `.specs/<id>/STATE.md` 获取当前阶段/路径模式/当前任务/中断任务/阶段进度。将 change-id 和路径模式写入会话上下文供后续阶段使用
+   - **worktree 数 > 1**：列出所有活跃 change（change-id + worktree 路径），用 AskUserQuestion 让用户选择要操作的 change → 读选中的 `.specs/<id>/STATE.md` → 将 change-id 写入会话上下文
 5. 选定 change 后检查：`中断任务` 非空 → 优先级最高，走回溯流程
 6. Worktree 检查：读取 `.specs/<id>/STATE.md` 的 `worktree_path` 字段。非空 → 检查 worktree 目录是否存在（`test -d <path>`）。存在 → 记录到会话上下文。不存在但路径有记录 → 输出「⚠️ worktree 已丢失：<path>，建议手动恢复或废弃」
 7. 尝试读 `.specs/CONTEXT.md`。不存在 → 棕地项目提醒可跑 intel-scan，不强制
    - 读取 `.specs/CONTEXT.md`（如存在）→ 将术语定义注入到会话上下文，后续所有阶段使用规范术语
    - 读取 `.specs/adr/` 目录（如存在且非空）→ 统计 ADR 数量，提示"已有 N 条架构决策记录，设计阶段将自动检查"
-8. `Pipeline 待续` 非空且活跃 Change 表为空 → 加载 `references/common/pipeline-continuation.md`（trigger=recall-start）
+8. `Pipeline 待续` 非空且无活跃 worktree → 加载 `references/common/pipeline-continuation.md`（trigger=recall-start）
 
 ## 第二步 · 加载配置（可选）
 
@@ -352,12 +348,12 @@ flow-go 默认以文件驱动，不依赖外部 MCP。可选集成 GitHub / Jira
 阶段完成（或产出工件）后，更新状态文件：
 
 - **阶段内高频更新**（阶段进度、当前任务）：写入 `.specs/<change-id>/STATE.md` 的对应字段
-- **阶段转换**：写入 `.specs/<change-id>/STATE.md` 的当前阶段字段 + 更新 STATE.md 索引表中该 change 的阶段和最后更新列。**下一阶段由路径模式决定**（查本文件「路径模式阶段转换」表的阶段序列），不是固定 +1
+- **阶段转换**：写入 `.specs/<change-id>/STATE.md` 的当前阶段字段。**下一阶段由路径模式决定**（查本文件「路径模式阶段转换」表的阶段序列），不是固定 +1
 - **worktree 追踪**：worktree 创建时，per-change STATE.md 的 `worktree_path` 写入路径值。归档/废弃清理后，`worktree_path` 清为 `无`
-- **启动新 change**：创建 `.specs/<id>/STATE.md` + 在 STATE.md 索引表添加新行
-- **归档**：从 STATE.md 索引表移除该 change 行 + 删除 `.specs/<id>/STATE.md`（归档/废弃流程自身步骤中完成，此处不再重复）
+- **启动新 change**：创建 worktree（分支 `change/<id>`） + 创建 `.specs/<id>/STATE.md`
+- **归档**：清理 worktree（remove worktree + 删除分支） + 删除 `.specs/<id>/STATE.md`（归档/废弃流程自身步骤中完成，此处不再重复）
 - **轨迹采集触发**（配置项 `trace_auto_collect` 控制，默认 true）：归档流程步骤 4.5 已在 `special-flows.md` 中定义，此处仅声明配置项引用。设为 false 时跳过轨迹采集
-- **中断流程**（用户请求暂停/切换 change 时触发）：中断流程在 `special-flows.md` 中定义。状态更新：PIPELINE.md 状态改为 `interrupted`，`.specs/<change-id>/STATE.md` 更新 `中断任务` 字段，STATE.md `活跃 Change` 可清空
+- **中断流程**（用户请求暂停/切换 change 时触发）：中断流程在 `special-flows.md` 中定义。状态更新：PIPELINE.md 状态改为 `interrupted`，`.specs/<change-id>/STATE.md` 更新 `中断任务` 字段，worktree 保留（可恢复）
 - **Pipeline 衔接**（归档流程完成后触发）：归档流程内部步骤 8.5 已在 `special-flows.md` 中定义。归档流程完成后如 `Pipeline 待续` 已被写入，在状态更新时输出衔接提示
 - **CONTEXT/ADR 持久化检查**：设计阶段完成时，如产出了新 ADR（`.specs/adr/` 下有新文件），输出「📜 新增 N 条 ADR：{ADR 标题列表}」。归档时 `.specs/CONTEXT.md` 和 `.specs/adr/` 不删除（跨 change 持久化），仅清理 `.specs/<id>/` 下的 change 级文件。同理 `.specs/scars/` 也是全局持久化目录，归档不清理。疤痕协议详见 `references/scars.md`
 - **决策同步检查**：grep 本阶段「决策信号」，逐条检查产出工件是否匹配

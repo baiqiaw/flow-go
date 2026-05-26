@@ -24,7 +24,7 @@
    - (b) `.specs/PIPELINE.md` 中该 change 标记为 `active`
    - (c) 创建 `.specs/<id>/` 目录
    - (d) 创建 `.specs/<id>/STATE.md`（初始阶段：0-需求，当前任务：无）
-   - (e) STATE.md 索引表新增该 change 行
+   - (e) 为新 change 创建 worktree
    - (f) 路由到 0-需求阶段
 4. **用户拒绝** → 保留 `Pipeline 待续` 字段，跳过
 

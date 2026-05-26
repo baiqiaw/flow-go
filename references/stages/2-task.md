@@ -5,13 +5,10 @@
 **输入**：`.specs/<id>/DESIGN.md` + `REQUIREMENT.md`
 
 **步骤**：
-0. **Worktree 创建**（如 per-change STATE.md 的 `worktree_path` 为 `无`）：
-   - (a) 调用 EnterWorktree（name: <change-id>），创建分支 `change/<id>` 的 worktree，路径为 `.claude/worktrees/<id>`
-   - (b) 进入 worktree 后，更新 `.specs/<id>/STATE.md` 的 `worktree_path` 为 worktree 绝对路径
-   - (c) 在 worktree 中验证：`git branch --show-current` 输出 `change/<id>`
-   - (d) worktree_path 已有值 → 跳过（已在 worktree 中）
-   - (e) EnterWorktree 不可用 → 回退到 Bash：`git worktree add .claude/worktrees/<id> -b change/<id>` + `cd .claude/worktrees/<id>`
-   - 详细流程见 `references/worktree-lifecycle.md`「创建流程」章节
+0. **Worktree 验证**（确认 0-需求阶段已创建 worktree）：
+   - (a) 读 `.specs/<id>/STATE.md` 的 `worktree_path` 字段
+   - (b) 验证 worktree 目录存在且 `git branch --show-current` 输出 `change/<id>`
+   - (c) 验证失败 → 输出「⚠️ worktree 未创建，请确认 0-需求阶段步骤 3.5 是否已执行」
 1. 拆原子任务：每个任务 ≤ 1 fresh context 可完成（通常 < 100 行代码）
    垂直切片原则：
 	   - 每个任务必须是垂直切片：穿透所有相关层（schema→API→UI→测试），完成后可独立验证
@@ -62,7 +59,7 @@
 - [ ] context_budget 与估算结果一致（若启用）
 - [ ] 并行分组已体现在依赖图描述中（若启用）
 - [ ] 交叉评审报告 6 维全 PASS
-- [ ] worktree 已创建且 worktree_path 已更新（如适用）
+- [ ] worktree 验证通过（worktree_path 非空且目录存在）
 - [ ] 垂直切片检查：每个任务有 e2e_coverage 字段（声明穿透层），done 条件包含端到端验证
 - [ ] Tracer bullet 检查：每个任务有 independently_verifiable 字段，优先安排 true 的任务
 - [ ] AFK/HITL 标记检查：每个任务有 mode 属性（afk/hitl/colab）

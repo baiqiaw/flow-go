@@ -88,6 +88,13 @@
      - (c) **依赖声明**：询问 change 间依赖关系（哪些 change 需要另一个先完成），填入 PIPELINE.md 的 `依赖` 列
    - 用户拒绝拆分 → 标记为"大型 change"，后续阶段自动启用分段呈现
 3. 自动生成 change-id：从描述提取核心关键词，kebab-case（2-4 词），检查 `.specs/<id>/` 不存在
+3.5 **Worktree 创建**：
+   - (a) 调用 EnterWorktree（name: <change-id>），创建分支 `change/<id>`，路径为 `.claude/worktrees/<id>`
+   - (b) 进入 worktree 后，创建 `.specs/<id>/` 目录
+   - (c) 将步骤 1-3 产出的 REQUIREMENT.md 和 CHANGE.md 写入 `.specs/<id>/`
+   - (d) 创建 `.specs/<id>/STATE.md`，`worktree_path` 写入 worktree 绝对路径
+   - (e) EnterWorktree 不可用 → 回退到 Bash：`git worktree add .claude/worktrees/<id> -b change/<id>` + `cd .claude/worktrees/<id>`（必须切换 cwd，后续路径操作才能指向 worktree）
+   - 详细流程见 `references/worktree-lifecycle.md`「创建流程」章节
 4. 写用户故事 + BDD AC（Given/When/Then），每条 AC 必须可测试
    4.1 **术语表同步到 CONTEXT.md**：
 	   - REQUIREMENT.md 术语表章节完成后，同步写入 `.specs/CONTEXT.md`

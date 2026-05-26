@@ -18,7 +18,7 @@ STATE.md 采用**两层结构**：
 
 | 字段 | 必填 | 格式 | 默认值 | 说明 |
 |------|------|------|--------|------|
-| 活跃 Change 表 | 是 | Markdown 表格（见下方模板），无活跃 change 时表体为空 | 空表 | 所有活跃 change 的概要。每行：change-id / 阶段 / 最后更新 |
+| 活跃 Change | 是 | 由 `git worktree list` 管理 | 无 | 活跃 change 通过 worktree 发现 |
 | Pipeline 待续 | 是 | `<change-id>` 或 `无` | `无` | 归档衔接时写入下一个 pending change-id |
 | 更新时间 | 是 | `YYYY-MM-DD` | 创建当天 | 索引最后更新时间 |
 
@@ -39,7 +39,7 @@ STATE.md 采用**两层结构**：
 1. 两个文件编码均为 UTF-8，首行分别为 `# STATE — flow-go 项目状态` 和 `# CHANGE STATE — <change-id>`
 2. 字段使用 Markdown 标题 + 列表格式（非 YAML），确保人可读、AI 可 grep
 3. 所有字段必须存在，不允许缺字段。无值时填 `无`
-4. 项目 STATE.md 活跃 Change 表中每个 change-id 必须对应 `.specs/<id>/` 目录和 `.specs/<id>/STATE.md` 存在
+4. 项目 STATE.md 中活跃 change 通过 `git worktree list` 发现，每个 worktree 对应的 change-id 必须有 `.specs/<id>/` 目录和 `.specs/<id>/STATE.md` 存在
 5. `.specs/<id>/STATE.md` 的 `当前阶段` 值必须在 `0-需求` / `1-设计` / `2-任务` / `3-开发` / `4-测试` / `5-审查` / `6-部署` / `7-验收` 中取值
 6. `路径模式` 值必须在 `完整` / `增量` / `最短` 中取值
 7. `当前任务` 和 `中断任务` 值必须对应 TASK.md 中的 task id
@@ -47,32 +47,19 @@ STATE.md 采用**两层结构**：
 9. `Pipeline 待续` 非空时，值必须为 `.specs/PIPELINE.md` 中状态为 `pending` 的 change-id
 10. `worktree_path` 非空时，路径必须指向一个有效的 git worktree 目录（`test -d <path>` 通过且 `git -C <path> rev-parse --git-dir` 正常输出）
 
-### 一致性约束（索引 ↔ 详情）
+### 一致性约束（项目 ↔ 详情）
 
-1. 项目 STATE.md 索引表中每个 change 的 `阶段` 值必须与 `.specs/<id>/STATE.md` 的 `当前阶段` 一致
-2. 项目 STATE.md 索引表中每个 change 的 `最后更新` 值必须 ≤ `.specs/<id>/STATE.md` 的 `更新时间`
-3. 归档时必须同时移除索引表行 + 删除 `.specs/<id>/STATE.md`
-
-### 旧格式迁移
-
-检测规则：当 STATE.md 中 `## 活跃 Change` 下的内容为单行文本（非表格、非"无"）时，判定为旧格式。
-
-迁移步骤：
-1. 读取旧格式所有字段（活跃 Change、当前阶段、当前任务、中断任务、Pipeline 待续、并行 Change、阶段进度、更新时间）
-2. 生成新格式 STATE.md：活跃 Change 改为表格格式（含阶段和最后更新列），保留 Pipeline 待续和更新时间
-3. 创建 `.specs/<id>/STATE.md`：包含当前阶段、当前任务、中断任务、阶段进度、更新时间
-4. 旧格式的 `并行 Change` 字段内容迁移为索引表的多行
+1. 归档时必须同时删除 worktree + 删除 `.specs/<id>/STATE.md`
 
 ### 完整性校验（回溯流程入口时执行）
 
 **项目级 STATE.md 校验**：
 - [ ] 文件存在且非空
 - [ ] 首行包含 `STATE`
-- [ ] 包含 `活跃 Change` 章节（表格格式或空）
 - [ ] 包含 `Pipeline 待续` 字段
 - [ ] 包含 `更新时间` 字段
-- [ ] 索引表中每个 change-id → `.specs/<id>/` 目录存在
-- [ ] 索引表中每个 change-id → `.specs/<id>/STATE.md` 存在
+- [ ] 每个 worktree 中的 change-id → `.specs/<id>/` 目录存在
+- [ ] 每个 worktree 中的 change-id → `.specs/<id>/STATE.md` 存在
 
 **Per-change STATE.md 校验**：
 - [ ] 文件存在且非空
@@ -84,7 +71,7 @@ STATE.md 采用**两层结构**：
 - [ ] `更新时间` 格式为 YYYY-MM-DD
 
 **一致性校验**：
-- [ ] 索引表中每个 change 的阶段值与 per-change STATE 的当前阶段一致
+- （无额外一致性校验，活跃 change 通过 worktree 发现）
 
 校验不通过时：输出具体缺失/不一致项，提示用户修复。不阻塞流程（降级为"无状态"模式，等同于新项目）。
 
@@ -95,8 +82,7 @@ STATE.md 采用**两层结构**：
 # STATE — flow-go 项目状态
 
 ## 活跃 Change
-| change-id | 阶段 | 最后更新 |
-|-----------|------|---------|
+（由 git worktree list 管理）
 
 ## Pipeline 待续
 - 无

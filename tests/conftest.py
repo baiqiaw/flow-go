@@ -21,7 +21,7 @@ def skill_root():
 
 @pytest.fixture
 def tmp_project(tmp_path):
-    """模拟项目目录结构：含 .specs/<id>/ 和 STATE.md"""
+    """模拟项目目录结构：含 .specs/<id>/ 和 STATE.md（worktree-first 格式，无索引表）"""
     specs_dir = tmp_path / ".specs" / "TEST-001"
     specs_dir.mkdir(parents=True)
     (specs_dir / "STATE.md").write_text(
@@ -30,8 +30,7 @@ def tmp_project(tmp_path):
         encoding="utf-8",
     )
     (tmp_path / "STATE.md").write_text(
-        "# STATE\n\n## 活跃 Change\n| change-id | 阶段 | 最后更新 |\n"
-        "|-----------|------|---------|\n| TEST-001 | 3-开发 | 2026-05-23 |\n\n"
+        "# STATE\n\n## 活跃 Change\n（由 git worktree list 管理）\n\n"
         "## Pipeline 待续\n- 无\n\n## 更新时间\n- 2026-05-23\n",
         encoding="utf-8",
     )
