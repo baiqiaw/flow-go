@@ -8,7 +8,7 @@
 
 **角色**：开发员（修）→ 技术经理（审），跳过需求和设计阶段
 
-**输入**：通过 `git worktree list` 确认当前活跃 worktree + `.specs/<id>/STATE.md`（change 级详情）+ bug 描述/用户报告 + 最近 SUMMARY.md（如存在）
+**输入**：bug 描述/用户报告 + 最近 SUMMARY.md（如存在）。通过 `git worktree list` 检查活跃 worktree —— 无活跃 change 时自动创建（步骤 0），有活跃 change 时直接使用
 
 **分级**：
 - P0（完全不可用）：先回滚再诊断，不许没回滚就查代码
@@ -16,6 +16,15 @@
 - P2（边缘问题）：建议走正常流程
 
 **步骤**：
+0. **无活跃 change 前置步骤**（通过 `git worktree list` 确认无 `change/` 分支 worktree 时执行）：
+   - (a) 从 bug 描述提取核心关键词，kebab-case 生成 change-id（2-4 词），检查 `.specs/<id>/` 不存在
+   - (b) 调用 `EnterWorktree`（name: <change-id>），创建分支 `change/<id>`，路径为 `.claude/worktrees/<id>`
+   - (c) 进入 worktree 后，创建 `.specs/<id>/` 目录
+   - (d) 创建 `.specs/<id>/CHANGE.md`，写入 bug 描述作为需求摘要，类型标注为 `bugfix`
+   - (e) 创建 `.specs/<id>/STATE.md`，`worktree_path` 写入 worktree 绝对路径，`当前阶段` 写 `3-开发`，`路径模式` 写 `最短`
+   - (f) `EnterWorktree` 不可用 → 回退到 Bash：`git worktree add .claude/worktrees/<id> -b change/<id>` + `cd .claude/worktrees/<id>`
+   - 已有活跃 change → 跳过本步骤，直接进入步骤 1
+   - **与 0-需求步骤 3.5 的差异**：本步骤省略 REQUIREMENT.md（热修跳过需求阶段），STATE.md 直接写入 `当前阶段: 3-开发` + `路径模式: 最短`（0-需求在后续步骤 9 才确定路径模式）。worktree 创建本身（EnterWorktree + Bash 回退）与步骤 3.5 一致，详见 `references/worktree-lifecycle.md`「创建流程」
 1. 判定 P 等级
 2. P0 先回滚，P1/P2 按级别处理
 3. **根因分析**（Iron Law — 无根因不修复）：
@@ -37,6 +46,7 @@
 **红线**：热修不能成为"绕过流程的捷径"。事后补齐是强制的。
 
 **自检**：
+- [ ] 活跃 worktree 已确认（无活跃 change 时步骤 0 已创建：change-id 已生成、worktree 已创建、STATE.md 已写入、当前位于 worktree 中）
 - [ ] P 等级已判定
 - [ ] 根因已分析（非直接跳到修复）
 - [ ] 作用域已锁定（编辑范围限于相关目录）

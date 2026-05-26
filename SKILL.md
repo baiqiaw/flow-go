@@ -131,7 +131,7 @@ description: >
 | `轨迹分析` / `gap 分析` | 运行 gap_analyzer.py | 自动 |
 | `校准评分` / `校准权重` | 运行 health_calibration.py | 自动 |
 | `清理归档` / `归档维护` / `archive cleanup` | 归档维护流程 | 运维 |
-| `热修` / `hotfix` / `紧急修复` / `修复bug` / `修bug` / `go 热修` / `go 修复` / `go hotfix` | 热修流程 | 开发员→技术经理 |
+| `热修` / `hotfix` / `紧急修复` / `修复bug` / `修bug` / `go 热修` / `go 修复` / `go hotfix` | 热修流程（无活跃 change 时自动创建 worktree + change 基础设施） | 开发员→技术经理 |
 | `原型` / `prototype` | 1-设计（原型子流程） | 技术经理 |
 | `回溯` / `recall` | 回溯流程 | 自动 |
 | `整理` / `neat` / `同步` | 加载 `references/sync-workflow.md` 执行全量同步 | — |
