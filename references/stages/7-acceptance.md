@@ -50,6 +50,8 @@
 4. 健康评分：从工件汇总指标，运行 `python3 references/scripts/health_scorer.py`，产出 7 维评分（AC 通过率/测试覆盖/评审效率/代码质量/边界卫生/文档完备/资源效率），评分写入 UAT.md。脚本自动追加到 `health-history.jsonl` 供趋势分析
 5. 验收签字：产品经理 + 项目经理分别签字
 6. LESSONS 提名：扫 SUMMARY 和 PROGRESS，把符合提名条件的失败经验入库（同时更新 `.lessons.jsonl` 索引）
+6A. **疤痕评估**（STANDARD/HEAVY 写入疤痕，LITE 仅评估不写入）：
+    检查本 change 是否发生了系统性治理失败（热修/审查 > 2 轮/活体验证 bug > 3/需求返工），如发生则按 `references/scars.md` 写入疤痕到 `.specs/scars/`。未发生则跳过。可选清理 > 90 天的 none-impact 疤痕
 7. **进化反思**：
    - **对话反馈分类**（7a，在信号检测前执行）：运行 `python3 references/scripts/feedback_classifier.py --specs-dir .specs/<id> --output .specs/evolution/<id>-classified-feedback.json`，将 `.specs/<id>/user-inputs.jsonl` 中的用户输入分为 project/skill/preference/noise 四类。skill 反馈追加到 `.specs/evolution/skill-feedback.jsonl`。输出分类摘要。LITE 模式使用 `--complexity LITE` 降低灵敏度
    - 运行 `python3 references/scripts/evolution_signal.py --specs-dir .specs/<id>` 从本 Change 工件提取信号
@@ -74,6 +76,7 @@
 - [ ] 修复循环角色切换已完成（如适用）
 - [ ] 验收重验已通过（如适用）
 - [ ] LESSONS 已扫
+- [ ] 疤痕评估已执行（步骤 6A 已评估，STANDARD/HEAVY 时已写入或确认无需写入）
 - [ ] 进化反思已运行（信号检测 + 假设生成）
 - [ ] PROGRESS.md 已清理
 - [ ] 归档流程已执行（含 STATE 清理 + 归档索引更新）

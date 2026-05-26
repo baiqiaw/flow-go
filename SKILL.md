@@ -359,7 +359,7 @@ flow-go 默认以文件驱动，不依赖外部 MCP。可选集成 GitHub / Jira
 - **轨迹采集触发**（配置项 `trace_auto_collect` 控制，默认 true）：归档流程步骤 4.5 已在 `special-flows.md` 中定义，此处仅声明配置项引用。设为 false 时跳过轨迹采集
 - **中断流程**（用户请求暂停/切换 change 时触发）：中断流程在 `special-flows.md` 中定义。状态更新：PIPELINE.md 状态改为 `interrupted`，`.specs/<change-id>/STATE.md` 更新 `中断任务` 字段，STATE.md `活跃 Change` 可清空
 - **Pipeline 衔接**（归档流程完成后触发）：归档流程内部步骤 8.5 已在 `special-flows.md` 中定义。归档流程完成后如 `Pipeline 待续` 已被写入，在状态更新时输出衔接提示
-- **CONTEXT/ADR 持久化检查**：设计阶段完成时，如产出了新 ADR（`.specs/adr/` 下有新文件），输出「📜 新增 N 条 ADR：{ADR 标题列表}」。归档时 `.specs/CONTEXT.md` 和 `.specs/adr/` 不删除（跨 change 持久化），仅清理 `.specs/<id>/` 下的 change 级文件
+- **CONTEXT/ADR 持久化检查**：设计阶段完成时，如产出了新 ADR（`.specs/adr/` 下有新文件），输出「📜 新增 N 条 ADR：{ADR 标题列表}」。归档时 `.specs/CONTEXT.md` 和 `.specs/adr/` 不删除（跨 change 持久化），仅清理 `.specs/<id>/` 下的 change 级文件。同理 `.specs/scars/` 也是全局持久化目录，归档不清理。疤痕协议详见 `references/scars.md`
 - **决策同步检查**：grep 本阶段「决策信号」，逐条检查产出工件是否匹配
   - 有匹配 → 输出「🔄 决策同步：N 条新决策，执行受作用域同步」然后加载 `references/sync-workflow.md` 执行受作用域同步
   - 无匹配 → 跳过

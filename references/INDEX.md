@@ -56,6 +56,7 @@ flow-go 的参考文档。SKILL.md 路由后按阶段名/工件名加载对应�
 - `evolution-paths.md` — 进化路径详细定义（CAPTURE/FIX/BITTER PILL/SUGGEST 四路径触发条件和执行步骤）
 - `evidence-tiers.md` — 证据分级标准（A/B/C/D 四级分类 + 标注规则 + 证据闸门触发条件）
 - `distillation.md` — 输出蒸馏规则（结论先行节奏 + 反模式 + Handoff 蒸馏确认）
+- `scars.md` — 疤痕协议（系统性治理失败的持久化记录 + 预防规则 + 写入/扫描时机）
 
 ## scripts/
 

@@ -28,6 +28,7 @@
 5. **Blast radius check**：修复涉及 > 5 文件时必须确认
 6. 事后 24h 内补齐：CHANGE.md + TEST.md + LESSONS 提名
 7. **进化反思（热修自动触发）**：运行 `evolution_signal.py`（热修 = 最强的 struggle_success 信号）+ `evolution_reflect.py`，假设直接提交 LESSONS 提名（无需 2 次门槛）
+7A. **疤痕写入**：热修 = gate-bypass 信号。按 `references/scars.md` 写入疤痕到 `.specs/scars/`，记录流程漏洞的预防规则。LITE 仅评估不写入
 
 **输出**：修复代码 + CHANGE.md + TEST.md
 
