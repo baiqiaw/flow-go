@@ -367,6 +367,7 @@ flow-go 默认以文件驱动，不依赖外部 MCP。可选集成 GitHub / Jira
 - **自动进化触发**（配置项 `evolution_mode` 控制，默认 `auto`，设为 `off` 则跳过全部进化分析）：归档完成后走 CAPTURE / FIX / BITTER PILL / SUGGEST 四路径。详细触发条件和脚本参数见 `references/evolution-paths.md`
 - **飞轮巡检**（手动触发：`飞轮巡检` / `飞轮报告` / `周报`）：运行 `gap_analyzer.py` + `health_calibration.py`，生成 `EVOLUTION-WEEKLY-YYYYMMDD.md`
 - **轻量进化检查**（每个阶段完成时自动执行，不依赖归档）：检测 `user_correction` / `gate_blocked` 即时信号，检测到输出「⚡ 即时信号」，无信号静默跳过。不写文件、不调脚本
+- **蒸馏输出**：阶段闸门通过后、状态更新前，对用户可见输出做蒸馏。内部过程（评审评分、自检清单、证据标注全文）保留在工件中，终端只展示：结论 + 关键风险（≤3 条）+ 下一步。蒸馏规则见 `references/distillation.md`
 
 ## 自检（产出路由声明前）
 

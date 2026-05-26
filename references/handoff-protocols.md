@@ -17,6 +17,8 @@
 | `non_functional` | §非功能需求 | 性能/安全/兼容性量化指标（非"待定"） |
 | `scope_exclusions` | §范围排除 | 排除项 + 排除理由 |
 | `review_disputes` | `<id>-REVIEW.md` | 争议点 + 最终决策（如有） |
+| `verification_hypotheses` | CHANGE.md §验证假设 | 关键假设 + 推翻信号（STANDARD/HEAVY） |
+| `kill_conditions` | CHANGE.md §终止条件 | 停止条件 + 触发后动作（STANDARD/HEAVY） |
 
 **FROM 产品经理 传递**：
 - 业务动机（Why）和用户痛点摘要
@@ -31,6 +33,8 @@
 - 确认非功能需求有量化指标（非"待定"）
 - 确认范围排除不遗漏技术依赖
 - 如有歧义，回溯产品经理澄清（非自行假设）
+- 确认验证假设和终止条件（STANDARD/HEAVY 时）合理且可观测
+- 确认蒸馏摘要与工件一致（摘要与工件冲突时以工件为准）
 
 ---
 
@@ -46,6 +50,8 @@
 | `risk_register` | §风险清单 | 每项风险含 probability/impact/category |
 | `integration_constraints` | §既有架构对齐 | 禁动清单 + 沿用决策 |
 | `review_disputes` | `<id>-REVIEW.md` | 争议点 + 最终决策（如有） |
+| `evidence_labels` | §技术选型 + §ADR | 证据级别标注（STANDARD/HEAVY + 完整/增量路径） |
+| `verification_hypotheses` | §验证假设 | C 级证据的验证计划 |
 
 **FROM 技术经理 传递**：
 - 技术栈选定理由和备选方案
@@ -60,6 +66,8 @@
 - 确认风险项有对应的任务级处理
 - 确认禁动清单在任务中不会违反
 - 确认依赖关系可映射到任务 `depends_on`
+- 确认证据标注完整（STANDARD/HEAVY 时，技术选型和 ADR 有 evidence 标注）
+- 确认蒸馏摘要与工件一致（摘要与工件冲突时以工件为准）
 
 ---
 

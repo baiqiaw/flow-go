@@ -47,6 +47,32 @@
 
 **闸门脚本化验证**：`python3 references/scripts/gate_check.py --stage <N> --change-id <id> --specs-dir .specs/<id> --complexity <level> --path-mode <full|incremental|shortest> [--categories gate]`
 
+### 1.4 证据闸门 [evidence]
+
+适用：STANDARD/HEAVY 复杂度 + 完整/增量路径。LITE + 最短路径跳过。
+定义详见 `references/evidence-tiers.md`。
+
+| 检查项 | 条件 | 缺失时 |
+|--------|------|--------|
+| 技术选型证据 | 每个首选方案有 >=B 级证据或附 C 级+验证计划 | 提示补强证据 |
+| ADR 证据 | 每个 ADR 的"决策"字段标注证据级别 | 提示补标注 |
+| D 级决策 | 无架构关键决策仅依赖 D 级证据 | FAIL，必须验证或换方案 |
+
+插入时机：1-设计阶段步骤 8（自检）中新增一项"证据分级已标注"
+
+### 1.5 假设闸门 [hypothesis]
+
+适用：STANDARD/HEAVY 复杂度（所有路径）。LITE 跳过。
+
+| 检查项 | 条件 | 缺失时 |
+|--------|------|--------|
+| 验证假设 | CHANGE.md 验证假设表 >=1 条 | 提示补充 |
+| 推翻信号 | 每条假设有明确的可观测信号 | 提示补充 |
+| 终止条件 | CHANGE.md 终止条件表 >=1 条 | 提示补充 |
+| 触发后动作 | 每条终止条件有回退/重评估/废弃选项 | 提示补充 |
+
+插入时机：0-需求阶段步骤 7（自检）中新增一项"验证假设和终止条件已填写"
+
 ---
 
 ## 2. LITE 安全场景 [safety]
