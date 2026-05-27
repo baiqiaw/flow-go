@@ -4,6 +4,10 @@
 
 **输入**：全部已通过工件 + `.specs/<id>/REVIEW.md`
 
+<AUTO-CLARITY>
+当前如处于压缩模式（tight/caveman/ultra），以下操作强制切换为 normal 完整输出：安全审查、部署确认。操作完成后恢复原模式。
+</AUTO-CLARITY>
+
 **步骤**：
 1. 前置 4 问（任一 ❌ 给替代路径，不让步）：
    - change 都 merge 到主干了？
