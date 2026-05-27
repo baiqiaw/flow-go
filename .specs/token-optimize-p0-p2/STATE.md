@@ -1,7 +1,7 @@
 # CHANGE STATE — token-optimize-p0-p2
 
 ## 当前阶段
-4-测试
+5-审查
 
 ## 路径模式
 完整
@@ -13,7 +13,7 @@
 无
 
 ## 阶段进度
-5 轮全覆盖测试完成，健康评分 96.25/A，0 bug。T10 Codex CLI HITL 待验证。
+矩阵 C 审查 6 维全 PASS（1 轮修复）。REVIEW.md 已产出，0 问题。
 
 ## worktree_path
 /home/cgh/projects/flow-go/.claude/worktrees/token-optimize-p0-p2
