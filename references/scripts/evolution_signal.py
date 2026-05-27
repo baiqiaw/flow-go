@@ -29,6 +29,7 @@ STRONG_SIGNALS = {
     "user_correction": "用户明确纠正了输出或行为",
     "gate_blocked": "闸门检查未通过，被阻断",
     "gate_blocked_trace": "Trace 记录显示闸门被阻断",
+    "skill_repeated_error": "同一 skill 脚本连续失败 ≥3 次",
 }
 
 MEDIUM_SIGNALS = {
@@ -36,6 +37,7 @@ MEDIUM_SIGNALS = {
     "role_violation": "跨越角色红线",
     "blast_radius": "blast radius check 触发（>5 文件）",
     "tool_pitfall": "工具/环境有值得长期记住的坑点",
+    "skill_script_error": "当前 change 中 skill 脚本失败 ≥2 次",
 }
 
 # ── 归因标签（借鉴进化引擎归因分析）───────────────────────────
@@ -92,6 +94,16 @@ ATTRIBUTIONS = {
         "tag": "🟡 工具没用好",
         "reason": "工具/环境存在值得记录的坑点",
         "advice": "记录到 LESSONS.md 并标记触发关键词",
+    },
+    "skill_script_error": {
+        "tag": "🟡 skill 自身问题",
+        "reason": "当前 change 中 skill 脚本多次失败，可能由工件格式或环境问题触发",
+        "advice": "检查对应 STATE.md 格式是否规范，或运行 validate_state.py 检查",
+    },
+    "skill_repeated_error": {
+        "tag": "🔴 skill 缺陷",
+        "reason": "同一脚本反复崩溃，可能存在 bug 或闸门条件与实际工件格式不匹配",
+        "advice": "触发 skill 自修复流程：检查脚本逻辑或闸门条件是否需要调整",
     },
 }
 
@@ -284,6 +296,71 @@ def _extract_tool_pitfall(specs_dir):
     return evidence[:3]
 
 
+def _extract_skill_error(specs_dir):
+    """从 .specs/skill-errors.jsonl 提取 skill 自身错误信号
+
+    检测两类信号：
+      - skill_script_error（中信号）：当前 change 内 ≥2 条错误记录
+      - skill_repeated_error（强信号）：同一脚本连续 ≥3 次失败
+    """
+    skill_errors_path = Path(specs_dir).parent / "skill-errors.jsonl"
+    change_id = Path(specs_dir).name
+
+    signals = {"medium": [], "strong": []}
+
+    try:
+        with open(skill_errors_path, encoding="utf-8") as f:
+            lines = [l.strip() for l in f if l.strip()]
+    except (FileNotFoundError, OSError):
+        return signals
+
+    records = []
+    for line in lines:
+        try:
+            r = json.loads(line)
+            rid = r.get("change_id", "")
+            # 匹配当前 change_id，或 change_id 为空（主流程调用未传 change_id）
+            if rid == change_id or rid == "":
+                records.append(r)
+        except json.JSONDecodeError:
+            continue
+
+    if not records:
+        return signals
+
+    # 中信号：≥2 条错误
+    if len(records) >= 2:
+        scripts = list(set(r.get("script", "?") for r in records))
+        signals["medium"].append({
+            "type": "skill_script_error",
+            "level": "medium",
+            "description": f"当前 change 中 skill 脚本失败 {len(records)} 次",
+            "evidence": [f"涉及脚本: {', '.join(scripts)}"],
+            "source": "skill_errors",
+            "attribution": ATTRIBUTIONS["skill_script_error"]["tag"],
+            "reason": ATTRIBUTIONS["skill_script_error"]["reason"],
+            "advice": ATTRIBUTIONS["skill_script_error"]["advice"],
+        })
+
+    # 强信号：同一脚本连续 ≥3 次失败
+    from collections import Counter
+    script_counts = Counter(r.get("script", "?") for r in records)
+    for script, count in script_counts.items():
+        if count >= 3:
+            signals["strong"].append({
+                "type": "skill_repeated_error",
+                "level": "strong",
+                "description": f"脚本 {script} 连续失败 {count} 次",
+                "evidence": [f"脚本 {script} 在 change {change_id} 中失败 {count} 次"],
+                "source": "skill_errors",
+                "attribution": ATTRIBUTIONS["skill_repeated_error"]["tag"],
+                "reason": ATTRIBUTIONS["skill_repeated_error"]["reason"],
+                "advice": ATTRIBUTIONS["skill_repeated_error"]["advice"],
+            })
+
+    return signals
+
+
 # ── 核心逻辑 ──────────────────────────────────────────────
 
 STRONG_EXTRACTORS = {
@@ -357,6 +434,13 @@ def detect(specs_dir, traces_path=None):
                 "reason": attr.get("reason", ""),
                 "advice": attr.get("advice", ""),
             })
+
+    # Skill 自身错误信号（从 skill-errors.jsonl 提取）
+    skill_signals = _extract_skill_error(specs_dir)
+    for sig in skill_signals.get("strong", []):
+        strong_signals.append(sig)
+    for sig in skill_signals.get("medium", []):
+        medium_signals.append(sig)
 
     # Cheap Gate（借鉴 signal_detector.py:157-160）
     gate_passed = len(strong_signals) >= 1 or len(medium_signals) >= 2

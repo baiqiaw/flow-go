@@ -297,3 +297,181 @@ class TestCLIEntryPoints:
         assert r.returncode == 0
         assert "--history" in r.stdout
         assert "--specs-dir" in r.stdout
+
+    def test_safe_run_help(self):
+        r = self._run_script("safe_run.py", ["--help"])
+        assert r.returncode == 0
+        assert "safe_run" in r.stdout.lower() or "安全" in r.stdout
+
+    def test_validate_skill_quick(self):
+        r = self._run_script("validate_skill.py", ["--skill-dir", os.getcwd(), "--quick"])
+        assert r.returncode == 0
+
+    def test_validate_state_fix(self, tmp_path):
+        """--fix 应自动补充缺失字段"""
+        from validate_state import validate, apply_fixes
+
+        state = tmp_path / "STATE.md"
+        state.write_text("# STATE\n\n## 更新时间\n- 2026-05-27\n", encoding="utf-8")
+        specs = tmp_path / ".specs"
+        specs.mkdir()
+
+        result = validate(str(state), str(specs))
+        fixes = result.get("fixes", [])
+        assert len(fixes) > 0, "应检测到缺失字段"
+
+        applied, errs = apply_fixes(str(state), fixes, str(specs))
+        assert len(applied) > 0, f"应应用修复: {errs}"
+        assert "Pipeline 待续" in state.read_text(encoding="utf-8")
+
+
+# ── 第 5 层：safe_run.py 功能回归 ────────────────────────────
+
+
+class TestSafeRun:
+    """safe_run.py 核心功能"""
+
+    def _run_safe(self, script_name, child_args=None, timeout=10):
+        import subprocess
+        cmd = [
+            sys.executable, "references/scripts/safe_run.py",
+            "--script", script_name,
+            "--timeout", str(timeout),
+            "--", *(child_args or []),
+        ]
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout + 5)
+        return r.returncode, r.stdout, r.stderr
+
+    def test_ok_script(self):
+        """正常脚本应返回 status=ok"""
+        exit_code, stdout, _ = self._run_safe("validate_state.py", ["--help"])
+        assert exit_code == 0
+        result = json.loads(stdout)
+        assert result["status"] == "ok"
+
+    def test_nonexistent_script(self):
+        """不存在的脚本应返回 status=error"""
+        exit_code, stdout, _ = self._run_safe("nonexistent_xyz.py", [])
+        result = json.loads(stdout)
+        assert result["status"] == "error"
+        assert result["recovery"] in ("degrade", "manual")
+
+    def test_script_with_business_error(self):
+        """脚本正常执行但业务逻辑失败（exit != 0 且 stderr 无 traceback）→ status=ok"""
+        exit_code, stdout, _ = self._run_safe(
+            "validate_state.py", ["--state-file", "/tmp/nonexistent-file.md"]
+        )
+        result = json.loads(stdout)
+        assert result["status"] == "ok"
+        # 业务逻辑失败不应被当作脚本崩溃
+        assert result["hint"] == ""
+
+    def test_output_is_valid_json(self):
+        """任何情况下输出都应该是有效的 JSON"""
+        for script in ["validate_state.py", "nonexistent.py", "gate_check.py"]:
+            _, stdout, _ = self._run_safe(script, ["--help"] if script != "nonexistent.py" else [])
+            try:
+                json.loads(stdout)
+            except json.JSONDecodeError:
+                pytest.fail(f"safe_run.py 输出非 JSON: {script}")
+
+
+# ── 第 6 层：evolution_signal skill 错误信号 ──────────────────
+
+
+class TestEvolutionSignalSkillErrors:
+    """evolution_signal.py _extract_skill_error 函数"""
+
+    def test_no_skill_errors_file(self, tmp_path):
+        from evolution_signal import _extract_skill_error
+
+        specs_dir = str(tmp_path / "TEST-001")
+        os.makedirs(specs_dir)
+        result = _extract_skill_error(specs_dir)
+        assert result["medium"] == []
+        assert result["strong"] == []
+
+    def test_medium_signal_two_errors(self, tmp_path):
+        from evolution_signal import _extract_skill_error
+
+        specs_dir = tmp_path / ".specs" / "TEST-001"
+        specs_dir.mkdir(parents=True)
+        skill_errors = tmp_path / ".specs" / "skill-errors.jsonl"
+        for i in range(2):
+            skill_errors.write_text(
+                json.dumps({
+                    "ts": "2026-05-27T15:00:00Z", "change_id": "TEST-001",
+                    "script": "gate_check.py", "error_type": "ScriptError",
+                    "stderr_preview": "error", "recovery": "degrade",
+                }) + "\n",
+                encoding="utf-8",
+            ) if i == 0 else open(str(skill_errors), "a", encoding="utf-8").write(
+                json.dumps({
+                    "ts": "2026-05-27T15:01:00Z", "change_id": "TEST-001",
+                    "script": "validate_state.py", "error_type": "ScriptError",
+                    "stderr_preview": "error", "recovery": "degrade",
+                }) + "\n"
+            )
+
+        result = _extract_skill_error(str(specs_dir))
+        assert len(result["medium"]) >= 1
+        assert result["medium"][0]["type"] == "skill_script_error"
+
+    def test_strong_signal_repeated_script(self, tmp_path):
+        from evolution_signal import _extract_skill_error
+
+        specs_dir = tmp_path / ".specs" / "TEST-002"
+        specs_dir.mkdir(parents=True)
+        skill_errors = tmp_path / ".specs" / "skill-errors.jsonl"
+        skill_errors.write_text("", encoding="utf-8")
+        for i in range(3):
+            with open(str(skill_errors), "a", encoding="utf-8") as f:
+                f.write(json.dumps({
+                    "ts": f"2026-05-27T15:0{i}:00Z", "change_id": "TEST-002",
+                    "script": "gate_check.py", "error_type": "ScriptError",
+                    "stderr_preview": "KeyError", "recovery": "degrade",
+                }) + "\n")
+
+        result = _extract_skill_error(str(specs_dir))
+        assert len(result["strong"]) >= 1
+        assert result["strong"][0]["type"] == "skill_repeated_error"
+
+
+# ── 第 7 层：gap_analyzer skill 错误聚合 ─────────────────────
+
+
+class TestGapAnalyzerSkillErrors:
+    """gap_analyzer.py analyze_skill_errors 函数"""
+
+    def test_no_skill_errors_file(self, tmp_path):
+        from gap_analyzer import analyze_skill_errors
+
+        specs_dir = str(tmp_path / ".specs")
+        os.makedirs(specs_dir)
+        result = analyze_skill_errors(specs_dir)
+        assert result["available"] is False
+
+    def test_with_skill_errors(self, tmp_path):
+        from gap_analyzer import analyze_skill_errors
+
+        specs_dir = tmp_path / ".specs"
+        specs_dir.mkdir(parents=True)
+        skill_errors = specs_dir / "skill-errors.jsonl"
+        scripts = ["gate_check.py", "gate_check.py", "validate_state.py", "evolution_signal.py"]
+        error_types = ["ScriptError", "Timeout", "ScriptError", "MissingFile"]
+        skill_errors.write_text("", encoding="utf-8")
+        for i, (script, etype) in enumerate(zip(scripts, error_types)):
+            with open(str(skill_errors), "a", encoding="utf-8") as f:
+                f.write(json.dumps({
+                    "ts": f"2026-05-27T15:0{i}:00Z", "change_id": "TEST-001",
+                    "script": script, "error_type": etype,
+                    "stderr_preview": "err", "recovery": "degrade",
+                }) + "\n")
+
+        result = analyze_skill_errors(str(specs_dir))
+        assert result["available"] is True
+        assert result["total_errors"] == 4
+        assert len(result["top_scripts"]) >= 1
+        top_script = result["top_scripts"][0]
+        assert top_script["script"] == "gate_check.py"
+        assert top_script["count"] == 2

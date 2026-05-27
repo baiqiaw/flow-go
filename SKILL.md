@@ -73,11 +73,53 @@ description: >
 
 ---
 
+---
+
+## 第零步 · 脚本调用约定
+
+所有脚本调用**必须**通过 safe_run.py 包装：
+
+```
+python3 references/scripts/safe_run.py --script <name>.py [--timeout N] [--critical] -- <args>
+```
+
+**safe_run.py 输出 JSON**（stdout），AI 解析 `status` 字段后行动：
+
+| status | 含义 | AI 动作 |
+|--------|------|---------|
+| `ok` | 脚本正常（exit 可为非 0，业务逻辑报错不属于崩溃） | 解析 `stdout` JSON，用于后续判断 |
+| `error` | 脚本崩溃（Python traceback 在 stderr） | 展示 `hint` 中文提示，按 `recovery` 降级路径执行 |
+| `timeout` | 超时（默认 30s） | 提示「{script} 超时」，非 `--critical` 则跳过 |
+
+**--critical 标记**：仅对阻塞流程的检查使用（如闸门检查），失败时 recovery=manual 且阻止流程。
+
+**safe_run.py 自身不可用**：回退到直接调用原脚本（维持当前行为）。
+
+**错误记录**：safe_run.py 自动将脚本错误追加到 `.specs/skill-errors.jsonl`（全局持久化，供进化分析和自修复使用）。
+
+---
+
 ## 第一步 · 读状态
 
 1. 尝试读项目根目录 `STATE.md`。不存在 → 新项目，跳过（仅记录 Pipeline 待续和更新时间为空）
 2. 从 STATE.md 读取 `Pipeline 待续` 和 `更新时间` 字段（保留，供后续流程使用）
-3. 执行完整性校验：调用 `python3 references/scripts/validate_state.py --state-file STATE.md --specs-dir .specs/`。脚本不可用时回退到 grep `references/artifacts/meta-artifacts.md` 的「完整性校验」清单。校验不通过 → 输出脚本返回的具体问题，降级为"无状态"模式（等同新项目）。如脚本返回 `fixes` 字段非空 → 额外提示「可自动修复缺失字段，回复"修复"即可」
+3. 执行完整性校验：
+   - 调用 `python3 references/scripts/safe_run.py --script validate_state.py --timeout 10 -- --state-file STATE.md --specs-dir .specs/`
+   - safe_run status=error → 回退到 grep `references/artifacts/meta-artifacts.md` 的「完整性校验」清单
+   - safe_run status=ok 且 exit_code=0（校验通过）→ 静默继续
+   - safe_run status=ok 且 exit_code≠0（校验不通过）→ 解析 stdout JSON：
+     - 输出 `errors` 中具体问题，降级为"无状态"模式（等同新项目）
+     - `fixes` 非空 → **自动执行 `safe_run.py --script validate_state.py -- --state-file STATE.md --specs-dir .specs/ --fix`**
+     - 自动修复后检查 `fix_applied` 字段：输出「已自动修复 N 项缺失字段」，静默继续
+     - `fixes` 仍有剩余（非确定性修复）→ 输出「M 项需人工确认：{fixes}」
+3a. **Skill 结构健康检查**（运行时，轻量级）：
+   - 调用 `python3 references/scripts/safe_run.py --script validate_skill.py --timeout 5 -- --skill-dir . --quick --json-only`
+   - safe_run status=ok 且 exit_code=0 → 静默通过
+   - safe_run status=ok 且 exit_code≠0 → 从 safe_run 的 stdout JSON 中提取 `stdout` 字段再 json.loads 得到 `errors`
+     - 有错误 → 输出「⚠️ skill 结构异常：{缺失文件/覆盖问题}」
+     - 触发 **Skill 自修复流程**（见下方 Skill 自修复流程章节）
+   - safe_run status=error → 输出警告，不阻塞流程（skill 结构检查自身不可用不是紧急问题）
+   - **不阻塞流程**：此检查是非阻塞的健康提示，异常信息注入会话上下文供后续使用
 4. 用 `git worktree list --porcelain` 发现活跃 change worktree：
    - 过滤输出中 `branch refs/heads/change/` 开头的行，提取 worktree 路径和 change-id（`change/` 后的部分）
    - **worktree 数 = 0**：无活跃 change，后续路由按"无活跃 change"处理
@@ -136,7 +178,7 @@ description: >
 | `回溯` / `recall` | 回溯流程 | 自动 |
 | `整理` / `neat` / `同步` | 加载 `references/sync-workflow.md` 执行全量同步 | — |
 | `保存` / `save` | 写 PROGRESS.md + 更新 STATE.md | 当前角色 |
-| `进化分析` / `反思一下` / `检查进化` / `进化信号` / `归因` | 运行 evolution_signal + evolution_reflect，展示假设和归因摘要 | 自动 |
+| `进化分析` / `反思一下` / `检查进化` / `进化信号` / `归因` | 运行 evolution_signal + evolution_reflect + skill 自优化检查，展示假设和归因摘要 | 自动 |
 | `进化状态` | 显示进化触发条件状态（健康趋势 / 归因频率 / 历史数据量） | 自动 |
 | `go` / `下一步` / `next` | STATE 有活跃变更 → 读 per-change STATE 获取当前阶段和路径模式 → 按路径模式阶段转换表确定下一阶段 → 路由到该阶段；当前阶段完成时同样按转换表跳转；无活跃变更 → 0-需求 | 自动 |
 | `/lite` | 强制设置当前 change 复杂度为 LITE，跳转到当前阶段 | 开发员 |
@@ -234,6 +276,76 @@ Handoff 检查在**首次阶段转换**时执行，验证上游上下文是否�
 - 阶段 3-开发及后续阶段：存在未清零的 bug/问题/技术债标记就转换到下一阶段——交叉评审循环必须达到 0 问题，门禁验证 0 问题状态
 - **"不是本阶段引起的/不是本次变更/已有问题" → 绝对驳回。发现的 bug 不区分来源（本次变更/历史遗留/环境差异/第三方依赖），全部必须修复到 0 才能离开当前阶段。任何未修复的 bug 都会随变更发布到生产。"不是本次引入的"不等于"可以不修"，恰恰是"明知有问题却不修"才是最危险的技术债**
 </HARD-GATE>
+
+---
+
+## Skill 自修复流程
+
+**触发条件**（任一满足）：
+1. 第一步步骤 3a 的 validate_skill.py --quick 返回结构异常
+2. 进化信号检测到 `skill_repeated_error` 强信号（同一脚本 ≥3 次失败）
+3. 用户说「skill 自检」「修复 skill」「skill 报错了」
+
+**流程定位**：自修复是**中断型流程** — 触发时暂停当前阶段，修复完成后恢复。修复期间不更新 STATE.md。
+
+**步骤**：
+
+```
+0. 前置验证（防误触发 + 防死循环）：
+   - 重新运行触发源检测，确认问题真实存在（排除临时/环境问题）
+   - 检查 skill-errors.jsonl：同一问题 5 分钟内已尝试修复 ≥3 次 → 停止，输出「自修复熔断：此问题已尝试 3 次未解决，需人工介入」，升级给用户
+   - 执行 git status --porcelain，确认 working tree clean（修复前基线干净，才能回滚）
+
+1. 诊断：
+   - 触发源=validate_skill → 解析其 JSON 输出的 errors 字段，逐条分析缺失/断裂
+   - 触发源=evolution_signal → 读取 skill-errors.jsonl，按 script 字段分组，定位高频失败脚本
+   - 触发源=用户报告 → 根据描述定位问题文件
+
+2. 分类（L1/L2/L3）：
+   L1-自动修复（直接执行，不询问）：
+     - .md 文件引用了不存在的路径（如 stages/xxx.md 被重命名/删除）
+     - STATE.md 缺失必填字段（调用 validate_state.py --fix）
+     - 日期格式错误（标准化为 YYYY-MM-DD）
+
+   L2-建议修复（展示方案，等用户确认后执行）：
+     - 脚本 argparse 参数与调用处不匹配
+     - 路由表关键词冲突或覆盖不完整
+     - 闸门阈值可能过严/过松（高阻断率 + 低返工率）
+
+   L3-需升级（输出诊断报告，不自行修复）：
+     - 脚本逻辑 bug（需改 Python 代码逻辑，非简单的引用/参数问题）
+     - skill 架构性问题（需重新设计阶段流程）
+
+3. L1 自动修复：
+   - 文件引用断裂 → find/grep 搜索正确路径 → 编辑 .md 文件更新引用
+   - STATE.md 字段缺失 → 调用 validate_state.py --fix
+   - 修复后立即运行 validate_skill.py --quick 验证
+
+4. L2 建议修复：
+   - 输出「检测到 N 个可优化项」→ 逐项展示（问题 / 建议修复 / 影响范围）
+   - 用户确认 → 执行修复 → validate_skill.py 验证
+   - 用户拒绝 → 记录到 skill-errors.jsonl（recovery="deferred"），不执行
+
+5. L3 升级：
+   - 输出诊断报告：错误摘要 + 根因分析 + 修复方向建议 + 影响评估
+   - 用户决定是否修复以及如何修复
+
+6. 验证闭环（所有修复后必做）：
+   - 运行 validate_skill.py（完整模式，不带 --quick）
+   - 重新触发原检测（如之前是 gate_check.py 失败，再跑一次 safe_run）
+   - 确认问题消失
+   - 追加修复记录到 skill-errors.jsonl：recovery="auto"（L1）或 "manual"（L2）
+
+7. 回滚（修复失败时）：
+   - git checkout -- <修改的文件> 回滚所有修复改动
+   - 输出「自修复失败：{原因}」
+   - 追加 skill-errors.jsonl：recovery="failed"
+   - 继续执行被中断的流程（带着问题运行比完全中断好）
+```
+
+**容错设计**：此流程内联在 SKILL.md 正文，不依赖外部 reference 文件 — 确保即使 reference 损坏，自修复流程仍可运行。
+
+---
 
 ## 第五步 · 角色声明
 
@@ -364,6 +476,12 @@ flow-go 默认以文件驱动，不依赖外部 MCP。可选集成 GitHub / Jira
 - **自动进化触发**（配置项 `evolution_mode` 控制，默认 `auto`，设为 `off` 则跳过全部进化分析）：归档完成后走 CAPTURE / FIX / BITTER PILL / SUGGEST 四路径。详细触发条件和脚本参数见 `references/evolution-paths.md`
 - **飞轮巡检**（手动触发：`飞轮巡检` / `飞轮报告` / `周报`）：运行 `gap_analyzer.py` + `health_calibration.py`，生成 `EVOLUTION-WEEKLY-YYYYMMDD.md`
 - **轻量进化检查**（每个阶段完成时自动执行，不依赖归档）：检测 `user_correction` / `gate_blocked` 即时信号，检测到输出「⚡ 即时信号」，无信号静默跳过。不写文件、不调脚本
+- **Skill 自优化检查**（「进化分析」路由触发时额外执行）：
+  1. 读取 `.specs/skill-errors.jsonl`，调用 `gap_analyzer.py` 获取 `skill_health` 数据
+  2. 分析趋势：近 30 天错误率（上升/下降/平稳）、高频失败脚本 Top 3、高频失败阶段 Top 3
+  3. 分析路由表有效性：检查 `.specs/<id>/user-inputs.jsonl` 中是否有用户反复使用但路由表未匹配的短语
+  4. 分析闸门有效性：gate_blocked 频率 vs 实际返工率 — 高阻断率+低返工率 → 闸门可能过严
+  5. 输出「Skill 优化建议」摘要（≤5 条，按预估影响排序），不自动执行任何修改
 - **蒸馏输出**：阶段闸门通过后、状态更新前，对用户可见输出做蒸馏。内部过程（评审评分、自检清单、证据标注全文）保留在工件中，终端只展示：结论 + 关键风险（≤3 条）+ 下一步。蒸馏规则见 `references/distillation.md`
 
 ## 第二步半 · 输出模式

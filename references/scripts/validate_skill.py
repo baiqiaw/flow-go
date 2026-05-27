@@ -155,35 +155,56 @@ def check_artifact_templates(skill_dir):
     return errors
 
 
-def validate(skill_dir):
-    """执行全部检查，返回结果"""
+def validate(skill_dir, quick=False):
+    """执行全部检查，返回结果
+
+    参数：
+        skill_dir: skill 根目录
+        quick: True 时跳过脚本参数交叉验证和脚本存在性检查（用于运行时快速健康检查）
+    """
     all_errors = []
     all_errors.extend(check_file_existence(skill_dir))
     all_errors.extend(check_stage_coverage(skill_dir))
-    all_errors.extend(check_script_params(skill_dir))
-    all_errors.extend(check_script_existence(skill_dir))
+    if not quick:
+        all_errors.extend(check_script_params(skill_dir))
+        all_errors.extend(check_script_existence(skill_dir))
     all_errors.extend(check_artifact_templates(skill_dir))
+    checks_run = 3 if quick else 5
     return {
         "passed": len(all_errors) == 0,
         "errors": all_errors,
-        "checks": 5,
+        "checks": checks_run,
     }
 
 
 def main():
     parser = argparse.ArgumentParser(description="flow-go skill 结构完整性验证器")
     parser.add_argument("--skill-dir", required=True, help="flow-go skill 根目录")
+    parser.add_argument("--quick", action="store_true",
+                        help="快速模式：仅检查文件存在性和阶段/工件覆盖，跳过脚本参数交叉验证")
+    parser.add_argument("--json-only", action="store_true",
+                        help="仅输出 JSON 到 stdout（人类可读文本输出到 stderr），供 safe_run.py 解析")
     args = parser.parse_args()
 
-    result = validate(args.skill_dir)
-    if result["passed"]:
-        print(f"✅ skill 结构验证通过（{result['checks']} 项检查）")
-    else:
-        print(f"❌ skill 结构验证失败（{len(result['errors'])} 个问题）:")
-        for e in result["errors"]:
-            print(f"  [{e['check']}] {e['error']}")
+    result = validate(args.skill_dir, quick=args.quick)
 
-    print(json.dumps(result, ensure_ascii=False, indent=2))
+    if args.json_only:
+        # JSON-only 模式：人类文本 → stderr，JSON → stdout
+        if result["passed"]:
+            print(f"✅ skill 结构验证通过（{result['checks']} 项检查）", file=sys.stderr)
+        else:
+            print(f"❌ skill 结构验证失败（{len(result['errors'])} 个问题）:", file=sys.stderr)
+            for e in result["errors"]:
+                print(f"  [{e['check']}] {e['error']}", file=sys.stderr)
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+    else:
+        if result["passed"]:
+            print(f"✅ skill 结构验证通过（{result['checks']} 项检查）")
+        else:
+            print(f"❌ skill 结构验证失败（{len(result['errors'])} 个问题）:")
+            for e in result["errors"]:
+                print(f"  [{e['check']}] {e['error']}")
+        print(json.dumps(result, ensure_ascii=False, indent=2))
     sys.exit(0 if result["passed"] else 1)
 
 

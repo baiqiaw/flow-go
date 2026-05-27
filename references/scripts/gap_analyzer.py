@@ -21,6 +21,7 @@ import os
 import re
 import statistics
 import sys
+from datetime import datetime, timedelta, timezone
 
 
 TAG_DIMENSIONS = [
@@ -180,6 +181,102 @@ def format_text_output(report):
     return "\n".join(lines)
 
 
+def analyze_skill_errors(specs_dir):
+    """分析 skill 自身错误遥测数据
+
+    读取 .specs/skill-errors.jsonl，统计：
+      - 各脚本错误频率排名
+      - 错误类型分布
+      - 近 30 天趋势
+    """
+    path = os.path.join(os.path.abspath(specs_dir), "skill-errors.jsonl")
+    if not os.path.isfile(path):
+        return {"available": False, "message": "skill-errors.jsonl 不存在，无错误数据"}
+
+    from collections import Counter
+
+    records = []
+    try:
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    records.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue
+    except OSError:
+        return {"available": False, "message": "skill-errors.jsonl 读取失败"}
+
+    if not records:
+        return {"available": True, "total_errors": 0, "message": "无 skill 错误记录"}
+
+    # 各脚本错误频率
+    script_counts = Counter(r.get("script", "?") for r in records)
+    top_scripts = [{"script": s, "count": c} for s, c in script_counts.most_common(5)]
+
+    # 错误类型分布
+    type_counts = Counter(r.get("error_type", "Unknown") for r in records)
+    type_distribution = {t: c for t, c in type_counts.most_common()}
+
+    # 恢复类型分布
+    recovery_counts = Counter(r.get("recovery", "?") for r in records)
+
+    # 近 30 天趋势
+    now = datetime.now(timezone.utc)
+    thirty_days_ago = now - timedelta(days=30)
+    recent = []
+    older = []
+    for r in records:
+        try:
+            ts = datetime.fromisoformat(r.get("ts", "").replace("Z", "+00:00"))
+            if ts >= thirty_days_ago:
+                recent.append(r)
+            else:
+                older.append(r)
+        except (ValueError, TypeError):
+            older.append(r)
+
+    # 趋势：比较最近 15 天和前 15 天
+    mid_point = now - timedelta(days=15)
+    recent_parsed = [(r, _parse_ts(r)) for r in recent]
+    period1 = [r for r, ts in recent_parsed if ts and ts < mid_point]
+    period2 = [r for r, ts in recent_parsed if ts and ts >= mid_point]
+    if len(period1) > 0 and len(period2) > 0:
+        if len(period2) > len(period1) * 1.3:
+            trend = "rising"
+            trend_label = "上升"
+        elif len(period1) > len(period2) * 1.3:
+            trend = "falling"
+            trend_label = "下降"
+        else:
+            trend = "stable"
+            trend_label = "平稳"
+    else:
+        trend = "insufficient_data"
+        trend_label = "数据不足"
+
+    return {
+        "available": True,
+        "total_errors": len(records),
+        "recent_30d": len(recent),
+        "older": len(older),
+        "trend": trend,
+        "trend_label": trend_label,
+        "top_scripts": top_scripts,
+        "error_types": type_distribution,
+        "recovery_distribution": dict(recovery_counts),
+    }
+
+
+def _parse_ts(record):
+    try:
+        return datetime.fromisoformat(record.get("ts", "").replace("Z", "+00:00"))
+    except (ValueError, TypeError):
+        return None
+
+
 def main():
     args = parse_args()
 
@@ -202,6 +299,7 @@ def main():
         "overall_avg_score": round(statistics.mean(overall_scores), 1) if overall_scores else None,
         "slices": dimension_slices,
         "weak_slices": weak_slices,
+        "skill_health": analyze_skill_errors(specs_dir),
     }
 
     if args.output_format == "text":

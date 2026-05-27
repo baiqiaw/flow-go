@@ -317,14 +317,87 @@ def validate(state_path, specs_dir=None, change_id=None):
     }
 
 
+def apply_fixes(state_path, fixes, specs_dir=None):
+    """自动应用确定性修复到 STATE.md 文件
+
+    支持两种修复：
+      - 项目级 STATE.md 补充字段（action="补充缺失字段"）
+      - per-change STATE.md 补充字段（action="补充 change 'X' 缺失字段"）
+
+    返回 (applied_count, errors): 成功应用的修复数和错误列表
+    """
+    applied = []
+    errors = []
+    from datetime import date
+
+    for fix in fixes:
+        action = fix.get("action", "")
+        fields = fix.get("fields", {})
+
+        if not fields:
+            continue
+
+        target_path = None
+
+        # 判断目标文件
+        change_match = re.match(r"补充 change '([^']+)' 缺失字段", action)
+        if change_match and specs_dir:
+            cid = change_match.group(1)
+            target_path = os.path.join(specs_dir, cid, "STATE.md")
+        elif "补充缺失字段" in action:
+            target_path = state_path
+
+        if not target_path or not os.path.isfile(target_path):
+            errors.append(f"无法定位修复目标: {action}")
+            continue
+
+        try:
+            with open(target_path, encoding="utf-8") as f:
+                content = f.read()
+
+            # 追加缺失字段（在文件末尾追加 ## 标题 + 值）
+            new_sections = []
+            for field_name, field_value in fields.items():
+                # 精确匹配：行首 ## 字段名，后跟换行或结束
+                if not re.search(rf"^## {re.escape(field_name)}\s*$", content, re.MULTILINE):
+                    new_sections.append(f"\n## {field_name}\n{field_value}")
+
+            if new_sections:
+                with open(target_path, "a", encoding="utf-8") as f:
+                    f.write("".join(new_sections))
+                applied.append({"action": action, "fields_applied": list(fields.keys()), "target": target_path})
+        except OSError as e:
+            errors.append(f"修复 {target_path} 失败: {e}")
+
+    return applied, errors
+
+
 def main():
     parser = argparse.ArgumentParser(description="STATE.md 完整性校验器（两层结构）")
     parser.add_argument("--state-file", required=True, help="项目级 STATE.md 文件路径")
     parser.add_argument("--specs-dir", help=".specs/ 目录路径（用于校验 per-change STATE 和目录存在性）")
     parser.add_argument("--change-id", help="仅校验指定 change 的 per-change STATE（可选，不传时校验全部活跃 change）")
+    parser.add_argument("--fix", action="store_true",
+                        help="自动应用确定性修复（补充缺失字段、修正日期格式）")
     args = parser.parse_args()
 
     result = validate(args.state_file, args.specs_dir, args.change_id)
+
+    if args.fix and result.get("fixes"):
+        applied, fix_errors = apply_fixes(args.state_file, result["fixes"], args.specs_dir)
+        result["fix_applied"] = applied
+        result["fix_errors"] = fix_errors
+        # 重新校验，确认修复效果
+        if applied and not fix_errors:
+            result2 = validate(args.state_file, args.specs_dir, args.change_id)
+            result["passed"] = result2["passed"]
+            # 从 change_results 中提取 per-change 错误
+            post_errors = list(result2.get("errors", []))
+            for cid, cr in result2.get("change_results", {}).items():
+                post_errors.extend(cr.get("errors", []))
+            result["errors"] = post_errors
+            result["missing"] = result2.get("missing", [])
+
     print(json.dumps(result, ensure_ascii=False, indent=2))
     sys.exit(0 if result["passed"] else 1)
 
