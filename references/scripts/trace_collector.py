@@ -57,10 +57,13 @@ def parse_args():
         prog="trace_collector",
     )
     # 互斥模式：常规采集 vs outcome 检查
-    mode = parser.add_mutually_exclusive_group(required=True)
+    mode = parser.add_mutually_exclusive_group(required=False)
     mode.add_argument("--change-id", help="常规采集模式：Change-ID（必选）")
     mode.add_argument("--check-outcome", action="store_true", help="outcome 检查模式：扫描并更新 traces.jsonl 中 outcome 为 null 的记录")
-    parser.add_argument("--specs-dir", required=True, help="spec 目录路径（必选）")
+    parser.add_argument("--specs-dir", required=False, help="spec 目录路径（必选）")
+    parser.add_argument("--estimate-tokens", help="估算输入文本的 token 数量（独立模式，不需要 --specs-dir）")
+    parser.add_argument("--record-tokens", nargs=4, metavar=("TOKENS_IN", "TOKENS_OUT", "SOURCE", "STAGE"), help="记录 token 用量到 traces.jsonl")
+    parser.add_argument("--stage-summary", action="store_true", help="按阶段汇总 token 用量")
     parser.add_argument("--health-score", type=float, help="健康评分（可选，默认从 health-history.jsonl 读取）")
     parser.add_argument("--complexity", choices=["LITE", "STANDARD", "HEAVY"], help="复杂度（可选，默认从 CHANGE.md 推断）")
     parser.add_argument("--path-mode", choices=["full", "incremental", "shortest"], default="full", help="路径模式（可选，默认 full）")
@@ -260,8 +263,93 @@ def generate_trace_md(change_id, state_info, decisions, health_info, tags, compl
     return "\n".join(lines)
 
 
+def estimate_tokens(text):
+    """估算文本的 token 数量（保守估计：每 4 字符 ≈ 1 token）"""
+    return max(1, len(text) // 4)
+
+
+def record_tokens(specs_dir, tokens_in, tokens_out, source, stage):
+    """追加 token 用量记录到 traces.jsonl"""
+    import os as _os
+    jsonl_path = _os.path.join(_os.path.dirname(specs_dir), "traces.jsonl")
+    record = {
+        "type": "token_usage",
+        "tokens_in": tokens_in,
+        "tokens_out": tokens_out,
+        "tokens_source": source,
+        "stage": stage,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    try:
+        with open(jsonl_path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+    except OSError as e:
+        print(f"错误：写入 traces.jsonl 失败 — {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+def stage_summary(specs_dir):
+    """按阶段汇总 token 用量"""
+    import os as _os
+    jsonl_path = _os.path.join(_os.path.dirname(specs_dir), "traces.jsonl")
+    if not _os.path.isfile(jsonl_path):
+        print("无 token 用量数据")
+        return
+    stage_stats = {}
+    with open(jsonl_path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                record = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if record.get("type") != "token_usage":
+                continue
+            stage = record.get("stage", "unknown")
+            if stage not in stage_stats:
+                stage_stats[stage] = {"tokens_in": 0, "tokens_out": 0, "count": 0}
+            stage_stats[stage]["tokens_in"] += int(record.get("tokens_in", 0))
+            stage_stats[stage]["tokens_out"] += int(record.get("tokens_out", 0))
+            stage_stats[stage]["count"] += 1
+    if not stage_stats:
+        print("无 token 用量数据")
+        return
+    total_in = total_out = total_count = 0
+    print(f"{'阶段':<12} {'输入 token':>12} {'输出 token':>12} {'记录数':>8}")
+    print("-" * 48)
+    for stage in sorted(stage_stats.keys()):
+        s = stage_stats[stage]
+        print(f"{stage:<12} {s['tokens_in']:>12,} {s['tokens_out']:>12,} {s['count']:>8}")
+        total_in += s["tokens_in"]
+        total_out += s["tokens_out"]
+        total_count += s["count"]
+    print("-" * 48)
+    print(f"{'合计':<12} {total_in:>12,} {total_out:>12,} {total_count:>8}")
+
+
 def main():
     args = parse_args()
+
+    # Token 估算模式（独立模式，不需要 --specs-dir）
+    if args.estimate_tokens:
+        tokens = estimate_tokens(args.estimate_tokens)
+        print(tokens)
+        return
+
+    if args.specs_dir is None:
+        print("错误：以下模式需要 --specs-dir：--change-id, --check-outcome, --record-tokens, --stage-summary", file=sys.stderr)
+        sys.exit(2)
+
+    if args.record_tokens:
+        tokens_in, tokens_out, source, stage = args.record_tokens
+        record_tokens(args.specs_dir, tokens_in, tokens_out, source, stage)
+        return
+
+    if args.stage_summary:
+        stage_summary(args.specs_dir)
+        return
 
     # outcome 检查模式
     if args.check_outcome:

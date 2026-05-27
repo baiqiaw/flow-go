@@ -1,0 +1,5 @@
+{"ts":"2026-05-27T15:05:00","change_id":"token-optimize-p0-p2","stage":"3-开发","input":"go"}
+{"ts":"2026-05-27T15:15:00","change_id":"token-optimize-p0-p2","stage":"4-测试","input":"go"}
+{"ts":"2026-05-27T15:25:00","change_id":"token-optimize-p0-p2","stage":"5-审查","input":"go"}
+{"ts":"2026-05-27T15:30:00","change_id":"token-optimize-p0-p2","stage":"6-部署","input":"go"}
+{"ts":"2026-05-27T15:40:00","change_id":"token-optimize-p0-p2","stage":"7-验收","input":"go"}

@@ -100,9 +100,11 @@ def discover_active_changes(project_dir):
     """
     import subprocess
     try:
+        env = os.environ.copy()
+        env.pop('GIT_DIR', None)
         result = subprocess.run(
             ['git', 'worktree', 'list', '--porcelain'],
-            capture_output=True, text=True, cwd=project_dir
+            capture_output=True, text=True, cwd=project_dir, env=env
         )
         if result.returncode != 0:
             return [], [f"git worktree list 执行失败：{result.stderr.strip()}"]

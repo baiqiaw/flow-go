@@ -14,6 +14,7 @@
 | `auto_sync` | true | 决策信号自动触发知识库受作用域同步 |
 | `priority_framework` | MoSCoW | 2-任务阶段默认优先级框架（auto=按决策树自动选择，MoSCoW/WSJF/RICE/ICE/MCDA=强制指定） |
 | `explain_level` | default | 解释详细度（default / terse） |
+| `output_mode` | normal | normal / tight / caveman / ultra | 输出压缩级别，按阶段自动切换 |
 | `evolution_mode` | auto | 进化分析模式（auto=自动触发 / off=关闭） |
 | `complexity_threshold` | 5 | blast-radius 文件数阈值 |
 | `bitter_pill_auto` | true | 归档后自动触发苦丸审计 |
