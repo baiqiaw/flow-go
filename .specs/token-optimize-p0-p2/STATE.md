@@ -1,7 +1,7 @@
 # CHANGE STATE — token-optimize-p0-p2
 
 ## 当前阶段
-5-审查
+6-部署
 
 ## 路径模式
 完整
