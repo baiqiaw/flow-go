@@ -3,9 +3,9 @@
 > 归档时自动维护，回溯时可选读取。不需要手动编辑。
 
 ## 归档统计
-- 正常归档：15 个
+- 正常归档：16 个
 - 废弃归档：0 个
-- 最近归档：20260526-worktree-first-isolation
+- 最近归档：2026-05-27-token-optimize-p0-p2
 - 最早归档：2026-05-20-data-flywheel
 
 ## 归档清单
@@ -28,6 +28,7 @@
 | 20260526-feat-dev-optimize | feat-dev-optimize | 5-审查 | 2026-05-26 | 保留 |
 | 20260526-kim-borrow-enhancement | kim-borrow-enhancement | 1-设计 | 2026-05-26 | 保留 |
 | 20260526-worktree-first-isolation | worktree-first-isolation | 7-验收 | 2026-05-26 | 保留 |
+| 2026-05-27-token-optimize-p0-p2 | token-optimize-p0-p2 | 7-验收 | 2026-05-27 | 保留 |
 
 ### 废弃
 | 归档目录 | Change-ID | 废弃原因 | 归档日期 | 保留状态 |
