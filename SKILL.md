@@ -225,7 +225,7 @@ python3 references/scripts/safe_run.py --script <name>.py [--timeout N] [--criti
 > 脚本化验证：`python3 references/scripts/gate_check.py --stage <N> --change-id <id> --specs-dir .specs/<id> --complexity <level> --path-mode <full|incremental|shortest> [--categories gate]`
 
 **路径模式适配**：闸门检查必须读取 `.specs/<id>/STATE.md` 的 `路径模式` 字段，按 `references/path-modes.md` 的闸门适配规则执行：
-- **最短路径**：阶段 3 仅需 CHANGE.md（含内联 AC）+ 代码提交（不检查 DESIGN.md / TASK.md）；阶段 4 仅需代码已提交（不检查 SUMMARY.md）；阶段 7 仅需 4-测试通过 + CHANGE.md AC 全部满足（不检查 DEPLOY.md / REVIEW.md）
+- **最短路径**：阶段 3 仅需 CHANGE.md（含内联 AC）+ 代码提交（不检查 DESIGN.md / TASK.md）；阶段 4 仅需代码已提交（不检查 SUMMARY.md）；阶段 7 仅需 4-测试通过 + CHANGE.md AC 全部满足 + AC 证据链满足分级要求（不检查 DEPLOY.md / REVIEW.md）
 - **增量路径**：阶段 1-5 闸门与完整路径相同；阶段 7 简化为不需要 DEPLOY.md
 - **完整路径**：全部闸门与 gate-rules.md 表一致
 - 路径模式中跳过的阶段不执行闸门检查（不进入 = 不检查）
@@ -264,6 +264,7 @@ Handoff 检查在**首次阶段转换**时执行，验证上游上下文是否�
 1. 读取当前阶段文件（`references/stages/<N>-<name>.md`）的「完成条件」
 2. 逐条验证。重点：交叉评审（如阶段步骤包含）的报告已产出且 6 维全 PASS
 2a. 验证无技术债残留（阶段 3 及后续）：检查 SUMMARY.md 无"已知问题"、TEST.md Bug 清单所有严重度 = 0、REVIEW.md 所有级别问题 = 0
+2b. 验收完成闸门（阶段 7 专项）：检查 `references/gate-rules.md` §1.8 的 7-验收完成闸门（AC 证据链分级 + 独立验证 + 对抗性测试）。此检查仅在阶段 7 转换到归档前执行
 3. 验证方式（阶段 0/1/2 文档评审）：检查 `<change-id>-REVIEW.md` 中是否存在当前阶段评审章节，且该章节的评审矩阵中 6 维全部为 PASS。阶段 3 代码评审产出在 `<task-id>-SUMMARY.md`，阶段 5 质量评审产出在 `REVIEW.md`——这两类评审的完成条件由各自阶段文件定义
 4. 任一条件不满足 → 停下来完成缺失步骤，禁止转换到下一阶段
 
@@ -374,7 +375,7 @@ Handoff 检查在**首次阶段转换**时执行，验证上游上下文是否�
 | 4-测试 | 测试员 | 按验收标准写用例，不改实现 |
 | 5-审查 | 技术经理 | 所有级别问题 = 0 才过关 |
 | 6-部署 | 运维 | 部署前有回滚方案 |
-| 7-验收 | 产品经理 | 逐条对照 AC 验收 |
+| 7-验收 | 产品经理 | 逐条对照 AC 验收，证据链分级，挑战者优先 |
 
 ## 角色约束速查
 

@@ -89,6 +89,9 @@
 | [uat-03-forget-lessons] 忘记 LESSONS | 失败经验不记录，下次重复踩坑 | 扫 SUMMARY/PROGRESS，提名教训入库 |
 | [uat-04-progress-not-cleaned] PROGRESS 未清理 | 临时文件残留在 spec 目录 | 验收后删除所有 `*-PROGRESS.md` |
 | [uat-05-skip-archive] 跳过归档流程 | 工件散落在 .specs/ 下，难以追溯 | 必须走归档：移动到 archive/ + 更新 STATE + 索引 |
+| [uat-06-subjective-evidence] **AC 验收仅有主观判断无硬证据** | "看起来没问题"/"功能正常"等 D 级证据通过 AC，掩盖实际 bug。自我验证偏见导致主观判断天然倾向确认通过 | 步骤 1AC 证据链：每条 AC 必须有 B 级（STANDARD/HEAVY）或 C 级（LITE）以上证据，D 级主观判断永远不可单独通过 |
+| [uat-07-happy-path-only] **只验证正向路径不测试边界** | 核心 AC 验证通过后直接签字，跳过空值/非法输入/边界值/权限等场景。用户正常操作没问题但异常操作立即崩溃 | 步骤 1LV-3A 对抗性测试：核心流程通过后主动尝试破坏功能，每条 AC 至少覆盖 2 个破坏维度 |
+| [uat-08-self-verify-bias] **同一 AI 自造自验无独立校验** | 造功能的 AI 验收自己的功能，确认偏差导致遗漏问题。自己写的代码自己最不容易发现 bug | 步骤 1IV 独立验证：派发独立子代理交叉验证 AC 结论，质疑/推翻时必须用 A 级证据反驳 |
 
 ---
 
