@@ -196,7 +196,7 @@ python3 references/scripts/safe_run.py --script <name>.py [--timeout N] [--criti
 
 路由确定后、闸门检查前，检查目标 change 的 worktree 状态：
 - per-change STATE.md 的 `worktree_path` 非空且 worktree 目录存在 → 调用 EnterWorktree（path: <worktree_path>）进入 worktree
-- `worktree_path` 为空 → 留在主仓库（阶段 0-1 不需要 worktree）
+- `worktree_path` 为空 → 0-需求步骤 3.5 之前的状态，留在主仓库；步骤 3.5 创建 worktree 后自动进入
 - 非空但目录不存在 → 输出「⚠️ worktree 已丢失：<path>」，建议用户手动恢复或废弃
 
 ## 第三步半 · 复杂度分级

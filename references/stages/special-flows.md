@@ -76,6 +76,18 @@
 
 ### 阶段一：worktree 内执行（步骤 1-7.7）
 
+**全局文件规则**：以下文件是跨 change 持久化的全局文件，归档阶段一（worktree 内）**禁止修改**，只能在阶段二（main 中）更新：
+- `.specs/CONTEXT.md`（域语言）
+- `.specs/PIPELINE.md`（Pipeline 管理）
+- `.specs/adr/`（架构决策）
+- `.specs/scars/`（疤痕记录）
+- `.specs/LESSONS.md`（经验库）
+- `.specs/evolution/`（进化产物）
+- `.specs/skill-errors.jsonl`（错误记录）
+- `.specs/traces.jsonl` / `.specs/health-history.jsonl`（轨迹与健康）
+
+worktree 内只操作 `.specs/<id>/` 下的 change 级文件。
+
 1. 确认归档目标：通过 `git worktree list` 确认当前活跃 worktree（必须非空）
 2. 阶段盘点：检查 `.specs/<id>/` 下已有的工件文件，列出已完成阶段
 3. 归档原因确认：询问用户归档原因（正常完成/不需要后续阶段/需求变更/其他）

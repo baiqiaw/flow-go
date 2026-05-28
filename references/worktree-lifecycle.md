@@ -39,15 +39,16 @@ none → active → cleaned
 
 ## 创建流程（AC-1）
 
-**触发时机**：2-任务阶段闸门通过后。
+**触发时机**：0-需求阶段步骤 3.5（change-id 生成后立即创建）。
 
 **前置条件**：per-change STATE.md 的 `worktree_path` 为 `无`。
 
 **步骤**：
 
 1. 调用 `EnterWorktree`（name: `<change-id>`），创建分支 `change/<id>` 的 worktree，路径为 `.claude/worktrees/<id>`
-2. 进入 worktree 后，更新 `.specs/<id>/STATE.md` 的 `worktree_path` 为 worktree 绝对路径
-3. 在 worktree 中验证：`git branch --show-current` 输出 `change/<id>`
+2. 进入 worktree 后，创建 `.specs/<id>/` 目录，将 REQUIREMENT.md / CHANGE.md 写入
+3. 创建 `.specs/<id>/STATE.md`，`worktree_path` 写入 worktree 绝对路径
+4. 在 worktree 中验证：`git branch --show-current` 输出 `change/<id>`
 
 **回退方案**：`EnterWorktree` 不可用时，用 Bash 执行：
 
@@ -63,7 +64,7 @@ git worktree add .claude/worktrees/<id> -b change/<id>
 
 ## 活跃工作（AC-2）
 
-**适用阶段**：3-开发、4-测试、5-审查、6-部署。
+**适用阶段**：0-需求（步骤 3.5 之后）、1-设计、2-任务、3-开发、4-测试、5-审查、6-部署。
 
 **行为规则**：
 
@@ -135,7 +136,7 @@ git worktree add .claude/worktrees/<id> -b change/<id>
 2. `worktree_path` 非空 → 检查 `test -d <path>`
 3. 目录存在 → `EnterWorktree`（path: `<path>`）进入
 4. 目录不存在 → 输出「worktree 已丢失：<path>，建议手动恢复或废弃该 change」
-5. `worktree_path` 为 `无` → 留在主仓库（阶段 0-1 的 change 不需要 worktree）
+5. `worktree_path` 为 `无` → 留在主仓库（0-需求步骤 3.5 之前尚未创建 worktree 的状态）
 
 **恢复后验证**：
 

@@ -92,13 +92,14 @@
 3.5 **Worktree 创建**：
    - (a) 调用 EnterWorktree（name: <change-id>），创建分支 `change/<id>`，路径为 `.claude/worktrees/<id>`
    - (b) 进入 worktree 后，创建 `.specs/<id>/` 目录
-   - (c) 将步骤 1-3 产出的 REQUIREMENT.md 和 CHANGE.md 写入 `.specs/<id>/`
+   - (c) 将步骤 1-3 产出的 REQUIREMENT.md 和 CHANGE.md 写入 worktree 的 `.specs/<id>/`（**必须使用 worktree 绝对路径**，如 `<worktree-path>/.specs/<id>/`，禁止用主仓库相对路径）
    - (d) 创建 `.specs/<id>/STATE.md`，`worktree_path` 写入 worktree 绝对路径
    - (e) EnterWorktree 不可用 → 回退到 Bash：`git worktree add .claude/worktrees/<id> -b change/<id>` + `cd .claude/worktrees/<id>`（必须切换 cwd，后续路径操作才能指向 worktree）
    - 详细流程见 `references/worktree-lifecycle.md`「创建流程」章节
 4. 写用户故事 + BDD AC（Given/When/Then），每条 AC 必须可测试
    4.1 **术语表同步到 CONTEXT.md**：
 	   - REQUIREMENT.md 术语表章节完成后，同步写入 `.specs/CONTEXT.md`
+	   - **全局文件定位**：CONTEXT.md 是跨 change 持久化的全局文件，**必须使用主仓库绝对路径**（如 `/home/.../flow-go/.specs/CONTEXT.md`），不能写在 worktree 内。即使当前在 worktree 中，也要用主仓库绝对路径读写此文件
 	   - 使用 `references/artifacts/memory-artifacts.md` 中的 CONTEXT 模板格式
 	   - 惰性创建：首次有术语时才创建文件
 	   - 写入前读取 `.specs/CONTEXT.md`（如存在），进行术语冲突检测：
