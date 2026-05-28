@@ -331,15 +331,20 @@ class TestCLIEntryPoints:
 class TestSafeRun:
     """safe_run.py 核心功能"""
 
-    def _run_safe(self, script_name, child_args=None, timeout=10):
+    def _run_safe(self, script_name, child_args=None, timeout=10, tmp_path=None):
         import subprocess
+        env = os.environ.copy()
+        if tmp_path:
+            env["FLOWGO_ERROR_LOG"] = str(tmp_path / "skill-errors.jsonl")
+        else:
+            env["FLOWGO_ERROR_LOG"] = ""
         cmd = [
             sys.executable, "references/scripts/safe_run.py",
             "--script", script_name,
             "--timeout", str(timeout),
             "--", *(child_args or []),
         ]
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout + 5)
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout + 5, env=env)
         return r.returncode, r.stdout, r.stderr
 
     def test_ok_script(self):

@@ -87,21 +87,31 @@ def _match_error(stderr_text):
 
 
 def _log_error(script_name, error_type, stderr_preview, recovery, change_id="", stage=""):
-    """追加错误记录到 skill-errors.jsonl"""
-    specs_dir = None
-    cwd = os.getcwd()
+    """追加错误记录到 skill-errors.jsonl
 
-    # 尝试找 .specs/ 目录
-    for candidate in [cwd, os.path.dirname(cwd)]:
-        sp = os.path.join(candidate, ".specs")
-        if os.path.isdir(sp):
-            specs_dir = sp
-            break
+    环境变量 FLOWGO_ERROR_LOG 可重定向日志路径（测试隔离用），
+    设为空字符串时禁用写入。
+    """
+    env_log = os.environ.get("FLOWGO_ERROR_LOG")
+    if env_log == "":
+        return
 
-    if specs_dir:
-        log_path = os.path.join(specs_dir, "skill-errors.jsonl")
+    if env_log:
+        log_path = env_log
     else:
-        log_path = os.path.join(cwd, "skill-errors.jsonl")
+        specs_dir = None
+        cwd = os.getcwd()
+
+        for candidate in [cwd, os.path.dirname(cwd)]:
+            sp = os.path.join(candidate, ".specs")
+            if os.path.isdir(sp):
+                specs_dir = sp
+                break
+
+        if specs_dir:
+            log_path = os.path.join(specs_dir, "skill-errors.jsonl")
+        else:
+            log_path = os.path.join(cwd, "skill-errors.jsonl")
 
     record = {
         "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
