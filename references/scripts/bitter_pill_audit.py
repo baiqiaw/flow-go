@@ -160,7 +160,7 @@ def format_markdown(results, skill_dir="."):
         lines.append(f"\n## {category_name}\n")
         for r in group:
             text_short = r["text"][:80] + ("..." if len(r["text"]) > 80 else "")
-            source = os.path.relpath(r["source"], skill_dir)
+            source = os.path.relpath(r["source"], skill_dir).replace(os.sep, "/")
             lines.append(f"- [{category_name}] `{text_short}`")
             lines.append(f"  - 来源: {source}")
             lines.append(f"  - 理由: {r['reason']}")
@@ -192,7 +192,7 @@ def format_text(results, skill_dir="."):
         lines.append(f"{category_name} ({len(group)} 条)")
         lines.append("-" * 60)
         for i, r in enumerate(group, 1):
-            source = os.path.relpath(r["source"], skill_dir)
+            source = os.path.relpath(r["source"], skill_dir).replace(os.sep, "/")
             lines.append(f"  [{i}] {r['text']}")
             lines.append(f"      来源: {source}")
             lines.append(f"      理由: {r['reason']}")

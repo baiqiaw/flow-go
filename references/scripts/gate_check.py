@@ -20,6 +20,11 @@ import os
 import re
 import sys
 
+# 确保同级脚本目录在 sys.path 中（支持子进程直接调用）
+_scripts_dir = os.path.dirname(os.path.abspath(__file__))
+if _scripts_dir not in sys.path:
+    sys.path.insert(0, _scripts_dir)
+
 from gate_artifacts import check_artifacts
 from gate_blast import check_blast_radius
 from gate_l2 import check as _l2_check
@@ -237,4 +242,8 @@ def main():
 
 
 if __name__ == "__main__":
+    # Windows GBK 终端兼容：确保 stdout/stderr 能输出 Unicode 字符
+    for _stream in (sys.stdout, sys.stderr):
+        if hasattr(_stream, "reconfigure"):
+            _stream.reconfigure(errors="replace")
     main()

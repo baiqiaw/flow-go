@@ -17,6 +17,8 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+from _common import safe_read_file, read_jsonl, atomic_write
+
 
 # ── action_type 风险等级 ──────────────────────────────────
 
@@ -199,19 +201,7 @@ def _load_history(history_path=None):
     """读取历史假设 JSONL（每行一个假设报告的 JSON）"""
     if not history_path or not Path(history_path).exists():
         return []
-    try:
-        lines = Path(history_path).read_text(encoding="utf-8").strip().split("\n")
-        records = []
-        for line in lines:
-            if not line.strip():
-                continue
-            try:
-                records.append(json.loads(line))
-            except json.JSONDecodeError:
-                continue
-        return records
-    except OSError:
-        return []
+    return read_jsonl(history_path)
 
 
 def _count_signature_frequency(current_hypotheses, history_records):
@@ -504,10 +494,7 @@ CAPTURE_HEALTH_THRESHOLD = 8.0
 
 def _read_artifact(path):
     """安全读取工件文件（capture 模式专用）"""
-    try:
-        return Path(path).read_text(encoding="utf-8")
-    except (FileNotFoundError, OSError):
-        return ""
+    return safe_read_file(path)
 
 
 def _infer_task_type(task_content):
@@ -892,10 +879,7 @@ def main():
     output = json.dumps(result, ensure_ascii=False, indent=2)
 
     if args.output:
-        Path(args.output).parent.mkdir(parents=True, exist_ok=True)
-        tmp = Path(args.output).with_suffix(".json.tmp")
-        tmp.write_text(output, encoding="utf-8")
-        os.replace(tmp, Path(args.output))
+        atomic_write(args.output, output)
         if args.history:
             try:
                 Path(args.history).parent.mkdir(parents=True, exist_ok=True)

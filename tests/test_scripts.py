@@ -273,9 +273,13 @@ class TestCLIEntryPoints:
 
     def _run_script(self, script_name, args, cwd=None):
         cmd = [sys.executable, f"references/scripts/{script_name}"] + args
+        env = os.environ.copy()
+        env["PYTHONIOENCODING"] = "utf-8"
         result = subprocess.run(
             cmd, capture_output=True, text=True, timeout=10,
             cwd=cwd or os.getcwd(),
+            env=env,
+            encoding="utf-8",
         )
         return result
 
