@@ -195,9 +195,9 @@ python3 references/scripts/safe_run.py --script <name>.py [--timeout N] [--criti
 ### Worktree 进入
 
 路由确定后、闸门检查前，检查目标 change 的 worktree 状态：
-- per-change STATE.md 的 `worktree_path` 非空且 worktree 目录存在 → 调用 EnterWorktree（path: <worktree_path>）进入 worktree
-- `worktree_path` 为空 → 0-需求步骤 3.5 之前的状态，留在主仓库；步骤 3.5 创建 worktree 后自动进入
-- 非空但目录不存在 → 输出「⚠️ worktree 已丢失：<path>」，建议用户手动恢复或废弃
+- per-change STATE.md 的 `worktree_path` 非空且 worktree 目录存在 → **立即调用 EnterWorktree（path: <worktree_path>）进入 worktree**。进入后执行 `git branch --show-current` 验证在 `change/<id>` 分支
+- `worktree_path` 为空 → 仅当路由目标是 0-需求（新 change）时允许继续，留在主仓库，由 0-需求步骤 3.5 创建 worktree。**非 0-需求路由但 worktree_path 为空 → 停住，不继续闸门检查和阶段加载，输出「⚠️ worktree 未创建，请先完成 0-需求步骤 3.5」**
+- 非空但目录不存在 → **停住，不继续**，输出「⚠️ worktree 已丢失：<path>，建议手动恢复或废弃」
 
 ## 第三步半 · 复杂度分级
 
@@ -350,7 +350,9 @@ Handoff 检查在**首次阶段转换**时执行，验证上游上下文是否�
 
 ## 第五步 · 角色声明
 
-路由确定后，输出角色声明：
+路由确定后，输出角色声明。
+
+**前置条件**：闸门检查（第四步）已通过且结果为 PASS。闸门未通过时禁止输出角色声明，必须先补齐缺失工件。0-需求阶段（无前置工件）自动满足此条件。
 
 ```
 ✅ 路由：<阶段名>
@@ -359,6 +361,7 @@ Handoff 检查在**首次阶段转换**时执行，验证上游上下文是否�
 ✅ 复杂度：<LITE / STANDARD / HEAVY>
 ✅ 当前角色：<角色名>
 ✅ 角色红线：<一句话提醒该角色的禁止事项>
+✅ 闸门检查：已通过
 ✅ 阶段锚点：<对应当前阶段的口诀，见下表>
 ✅ 第一动作：<具体下一步>
 ✅ 项目记忆：{如 CONTEXT.md 存在："N 个领域术语" + "M 条 ADR" / "无"}
@@ -512,7 +515,8 @@ flow-go 支持 4 级输出压缩模式，按阶段自动切换：
 - [ ] 已按路由表匹配意图
 - [ ] 已读取路径模式（来自 `.specs/<id>/STATE.md` 的 `路径模式` 字段，新需求时为"待确定"）
 - [ ] 新 CHANGE 已自动生成 change-id（如适用）
-- [ ] 闸门前置条件已验证（按路径模式适配的闸门规则）
+- [ ] 闸门检查已实际执行（已调用 gate_check.py 或已逐条验证工件存在性），如未执行禁止继续
+- [ ] worktree 已创建并已进入（非 0-需求步骤 3.5 之前时，`git branch --show-current` 确认在 `change/<id>` 分支）
 - [ ] 角色声明包含红线提醒
 - [ ] 决策同步检查已执行（有信号已触发 / 无信号已跳过 / 归档或验收已内联同步）
 

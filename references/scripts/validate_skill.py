@@ -155,6 +155,86 @@ def check_artifact_templates(skill_dir):
     return errors
 
 
+def check_critical_instructions(skill_dir):
+    """检查关键指令结构元素是否存在（防止指令性回归）
+
+    验证 SKILL.md 和阶段文件中包含防止 worktree 跳过和闸门检查跳过的
+    关键结构元素。这些检查很轻量，quick 模式也执行。
+    """
+    errors = []
+
+    # 1. 0-requirement.md 步骤 3.5 应有 HARD-GATE 标记和"禁止跳过"
+    req_path = os.path.join(skill_dir, "references", "stages", "0-requirement.md")
+    if os.path.isfile(req_path):
+        with open(req_path, encoding="utf-8") as f:
+            content = f.read()
+        # 查找步骤 3.5 区域
+        m = re.search(r'3\.5\s+\*\*(.+?)\*\*', content)
+        if not m:
+            errors.append({"check": "critical_instructions",
+                           "error": "0-requirement.md 步骤 3.5 缺少标题（可能被删除或重编号）"})
+        else:
+            title = m.group(1)
+            if "<HARD-GATE>" not in title:
+                errors.append({"check": "critical_instructions",
+                               "error": "0-requirement.md 步骤 3.5 缺少 <HARD-GATE> 标记（worktree 创建可能被跳过）"})
+            if "禁止跳过" not in content[m.start():m.start() + 200]:
+                errors.append({"check": "critical_instructions",
+                               "error": "0-requirement.md 步骤 3.5 缺少 '禁止跳过' 文本"})
+    else:
+        errors.append({"check": "critical_instructions",
+                       "error": "references/stages/0-requirement.md 不存在"})
+
+    # 2. SKILL.md 第五步 · 角色声明应有闸门检查前置条件
+    skill_path = os.path.join(skill_dir, "SKILL.md")
+    if os.path.isfile(skill_path):
+        with open(skill_path, encoding="utf-8") as f:
+            skill_content = f.read()
+
+        # 找第五步区域
+        step5_match = re.search(r'##\s*第五步.*?角色声明', skill_content)
+        if step5_match:
+            # 取第五步到第六步之间的内容
+            step5_start = step5_match.start()
+            step6_match = re.search(r'##\s*第六步', skill_content[step5_start:])
+            step5_section = skill_content[step5_start:step5_start + step6_match.start()] if step6_match else skill_content[step5_start:]
+            if "闸门检查" not in step5_section or ("禁止输出角色声明" not in step5_section and "前置条件" not in step5_section):
+                errors.append({"check": "critical_instructions",
+                               "error": "SKILL.md 第五步 · 角色声明缺少闸门检查前置条件（闸门检查可能被跳过）"})
+        else:
+            errors.append({"check": "critical_instructions",
+                           "error": "SKILL.md 缺少第五步 · 角色声明章节"})
+
+        # 3. SKILL.md 自检部分应有"闸门检查已实际执行"
+        self_check_match = re.search(r'##\s*自检', skill_content)
+        if self_check_match:
+            sc_start = self_check_match.start()
+            # 取到下一个 ## 标题或文件末尾
+            next_section = re.search(r'\n## ', skill_content[sc_start + 10:])
+            sc_section = skill_content[sc_start:sc_start + 10 + next_section.start()] if next_section else skill_content[sc_start:]
+            if "闸门检查已实际执行" not in sc_section:
+                errors.append({"check": "critical_instructions",
+                               "error": "SKILL.md 自检部分缺少 '闸门检查已实际执行'（闸门检查可能被跳过）"})
+        else:
+            errors.append({"check": "critical_instructions",
+                           "error": "SKILL.md 缺少自检章节"})
+
+        # 4. SKILL.md "Worktree 进入" 应有异常阻断（"停住"或"不继续"）
+        wt_match = re.search(r'###\s*Worktree\s*进入', skill_content)
+        if wt_match:
+            wt_start = wt_match.start()
+            next_h3 = re.search(r'\n## ', skill_content[wt_start + 5:])
+            wt_section = skill_content[wt_start:wt_start + 5 + next_h3.start()] if next_h3 else skill_content[wt_start:]
+            if "停住" not in wt_section and "不继续" not in wt_section:
+                errors.append({"check": "critical_instructions",
+                               "error": "SKILL.md 'Worktree 进入' 缺少异常阻断指令（worktree 异常时可能继续执行）"})
+        else:
+            errors.append({"check": "critical_instructions",
+                           "error": "SKILL.md 缺少 'Worktree 进入' 章节"})
+
+    return errors
+
+
 def validate(skill_dir, quick=False):
     """执行全部检查，返回结果
 
@@ -165,16 +245,24 @@ def validate(skill_dir, quick=False):
     all_errors = []
     all_errors.extend(check_file_existence(skill_dir))
     all_errors.extend(check_stage_coverage(skill_dir))
+    all_errors.extend(check_critical_instructions(skill_dir))
     if not quick:
         all_errors.extend(check_script_params(skill_dir))
         all_errors.extend(check_script_existence(skill_dir))
     all_errors.extend(check_artifact_templates(skill_dir))
-    checks_run = 3 if quick else 5
+    checks_run = 4 if quick else 6
     return {
         "passed": len(all_errors) == 0,
         "errors": all_errors,
         "checks": checks_run,
     }
+
+
+def _reconfigure_streams():
+    """Windows GBK 终端兼容：确保 stdout/stderr 能输出 Unicode 字符"""
+    for _stream in (sys.stdout, sys.stderr):
+        if hasattr(_stream, "reconfigure"):
+            _stream.reconfigure(errors="replace")
 
 
 def main():
@@ -186,6 +274,7 @@ def main():
                         help="仅输出 JSON 到 stdout（人类可读文本输出到 stderr），供 safe_run.py 解析")
     args = parser.parse_args()
 
+    _reconfigure_streams()
     result = validate(args.skill_dir, quick=args.quick)
 
     if args.json_only:

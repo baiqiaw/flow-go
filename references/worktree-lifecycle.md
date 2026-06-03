@@ -46,7 +46,7 @@ none → active → cleaned
 **步骤**：
 
 1. 调用 `EnterWorktree`（name: `<change-id>`），创建分支 `change/<id>` 的 worktree，路径为 `.claude/worktrees/<id>`
-2. 进入 worktree 后，创建 `.specs/<id>/` 目录，将 REQUIREMENT.md / CHANGE.md 写入
+2. 进入 worktree 后，创建 `.specs/<id>/` 目录，如主仓库已有临时文件则迁移到 worktree
 3. 创建 `.specs/<id>/STATE.md`，`worktree_path` 写入 worktree 绝对路径
 4. 在 worktree 中验证：`git branch --show-current` 输出 `change/<id>`
 

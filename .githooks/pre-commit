@@ -13,9 +13,18 @@ fi
 
 echo "📋 检测到 skill 相关文件变更，运行回归测试..."
 
-# 查找可用的 python（优先 venv）
+# 查找可用的 python（优先 venv，兼容 Windows 和 WSL）
 PYTHON=""
-for candidate in "$VIRTUAL_ENV/bin/python3" "/mnt/c/Users/45079/venv/bin/python3" "$HOME/venv/bin/python3" "$(which python3 2>/dev/null)"; do
+for candidate in \
+    "$VIRTUAL_ENV/bin/python3" \
+    "$VIRTUAL_ENV/bin/python" \
+    "$VIRTUAL_ENV/Scripts/python.exe" \
+    "/mnt/c/Users/45079/venv/bin/python3" \
+    "/mnt/c/Users/45079/venv/Scripts/python.exe" \
+    "$HOME/venv/bin/python3" \
+    "$HOME/venv/Scripts/python.exe" \
+    "$(which python3 2>/dev/null)" \
+    "$(which python 2>/dev/null)"; do
     if [ -x "$candidate" ] && "$candidate" -m pytest --version &>/dev/null; then
         PYTHON="$candidate"
         break
@@ -35,7 +44,7 @@ if [ -n "$PYTHON" ]; then
     }
 else
     echo "❌ 未找到安装了 pytest 的 python，commit 已阻止"
-    echo "   请激活 venv: source /mnt/c/Users/45079/venv/bin/activate"
+    echo "   请激活 venv 或确认 python 在 PATH 中"
     exit 1
 fi
 
