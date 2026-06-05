@@ -163,7 +163,15 @@ def check_critical_instructions(skill_dir):
     """
     errors = []
 
-    # 1. 0-requirement.md 步骤 3.5 应有 HARD-GATE 标记和"禁止跳过"
+    # 1. SKILL.md 路由层应有 "新 change worktree 创建" 流程
+    skill_path = os.path.join(skill_dir, "SKILL.md")
+    if os.path.isfile(skill_path):
+        with open(skill_path, encoding="utf-8") as f:
+            content = f.read()
+        if "新 change worktree 创建" not in content:
+            errors.append({"check": "critical_instructions",
+                           "error": "SKILL.md 缺少 '新 change worktree 创建' 流程（worktree 应在路由层创建）"})
+    # 1b. 0-requirement.md 步骤 3.5 应有 HARD-GATE 标记（worktree 上下文验证）
     req_path = os.path.join(skill_dir, "references", "stages", "0-requirement.md")
     if os.path.isfile(req_path):
         with open(req_path, encoding="utf-8") as f:
@@ -177,10 +185,10 @@ def check_critical_instructions(skill_dir):
             title = m.group(1)
             if "<HARD-GATE>" not in title:
                 errors.append({"check": "critical_instructions",
-                               "error": "0-requirement.md 步骤 3.5 缺少 <HARD-GATE> 标记（worktree 创建可能被跳过）"})
-            if "禁止跳过" not in content[m.start():m.start() + 200]:
+                               "error": "0-requirement.md 步骤 3.5 缺少 <HARD-GATE> 标记（worktree 验证可能被跳过）"})
+            if "文件写入" not in content[m.start():m.start() + 300]:
                 errors.append({"check": "critical_instructions",
-                               "error": "0-requirement.md 步骤 3.5 缺少 '禁止跳过' 文本"})
+                               "error": "0-requirement.md 步骤 3.5 缺少文件写入安全约束文本"})
     else:
         errors.append({"check": "critical_instructions",
                        "error": "references/stages/0-requirement.md 不存在"})

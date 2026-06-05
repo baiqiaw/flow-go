@@ -25,7 +25,7 @@
    - (f) `EnterWorktree` 不可用 → 回退到 Bash：`git worktree add .claude/worktrees/<id> -b change/<id>` + `cd .claude/worktrees/<id>`
    - (g) **worktree 创建后验证**：执行 `git branch --show-current` 确认 `change/<id>` + `pwd` 确认在 worktree 目录。验证失败 → 停止，输出「❌ 热修 worktree 创建后验证失败」
    - 已有活跃 change → 跳过本步骤，直接进入步骤 1（**但需执行步骤 1 前的 worktree 上下文验证**：`git branch --show-current` = `change/<id>`）
-   - **与 0-需求步骤 3.5 的差异**：本步骤省略 REQUIREMENT.md（热修跳过需求阶段），STATE.md 直接写入 `当前阶段: 3-开发` + `路径模式: 最短`（0-需求在后续步骤 9 才确定路径模式）。worktree 创建本身（EnterWorktree + Bash 回退）与步骤 3.5 一致，详见 `references/worktree-lifecycle.md`「创建流程」
+   - **与 0-需求路由层 worktree 创建的差异**：本步骤省略 REQUIREMENT.md（热修跳过需求阶段），STATE.md 直接写入 `当前阶段: 3-开发` + `路径模式: 最短`（0-需求在后续步骤 9 才确定路径模式）。worktree 创建本身（EnterWorktree + Bash 回退）与路由层创建流程一致，详见 `references/worktree-lifecycle.md`「创建流程」
 1. 判定 P 等级
 2. P0 先回滚，P1/P2 按级别处理
 3. **根因分析**（Iron Law — 无根因不修复。违反字面即违反精神）：

@@ -9,7 +9,7 @@
 0. **Worktree 验证**（确认 0-需求阶段已创建 worktree）：
    - (a) 读 `.specs/<id>/STATE.md` 的 `worktree_path` 字段
    - (b) 验证 worktree 目录存在且 `git branch --show-current` 输出 `change/<id>`
-   - (c) 验证失败 → 输出「⚠️ worktree 未创建，请确认 0-需求阶段步骤 3.5 是否已执行」
+   - (c) 验证失败 → 输出「⚠️ worktree 未创建，请确认 SKILL.md 路由层的 worktree 创建流程是否已执行」
 1. 拆原子任务：每个任务 ≤ 1 fresh context 可完成（通常 < 100 行代码）
    垂直切片原则：
 	   - 每个任务必须是垂直切片：穿透所有相关层（schema→API→UI→测试），完成后可独立验证

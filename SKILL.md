@@ -394,9 +394,35 @@ python3 references/scripts/safe_run.py --script <name>.py [--timeout N] [--criti
 
 - per-change STATE.md 的 `worktree_path` 非空且 worktree 目录存在 → **立即调用 EnterWorktree（path: <worktree_path>）进入 worktree**。进入后执行 `git branch --show-current` 验证在 `change/<id>` 分支
 
-- `worktree_path` 为空 → 仅当路由目标是 0-需求（新 change）时允许继续，留在主仓库，由 0-需求步骤 3.5 创建 worktree。**非 0-需求路由但 worktree_path 为空 → 停住，不继续闸门检查和阶段加载，输出「⚠️ worktree 未创建，请先完成 0-需求步骤 3.5」**
+- `worktree_path` 为空 且 路由目标是 0-需求（新 change）→ **立即执行「新 change worktree 创建」流程**（见下方），确保 0-需求阶段加载时会话已在 worktree 中，所有工件自然写入 worktree
+
+- `worktree_path` 为空 且 路由目标非 0-需求 → **停住，不继续闸门检查和阶段加载**，输出「⚠️ worktree 未创建，请先完成 0-需求阶段」
 
 - 非空但目录不存在 → **停住，不继续**，输出「⚠️ worktree 已丢失：<path>，建议手动恢复或废弃」
+
+#### 新 change worktree 创建（路由层，路由到 0-需求时立即执行）
+
+**为什么在路由层创建**：之前的方案是在 0-需求阶段步骤 3.5 创建 worktree，但实践发现 `EnterWorktree` 切换 CWD 在跨 turn 时不可靠，导致后续文件写入仍落在主仓库。将 worktree 创建提前到路由层，确保会话在进入任何阶段之前已在 worktree 中。
+
+**步骤**：
+
+1. **生成 change-id**：从用户输入的描述部分提取核心关键词，kebab-case（2-4 词）
+
+2. **唯一性检查**：检查 `.specs/<id>/` 不存在（在主仓库中检查）。如已存在，追加数字后缀
+
+3. **创建 worktree**：调用 `EnterWorktree`（name: `<change-id>`），创建分支 `change/<id>`，路径为 `.claude/worktrees/<id>`
+
+   - `EnterWorktree` 不可用 → 回退到 Bash：`git worktree add .claude/worktrees/<id> -b change/<id>` + `cd .claude/worktrees/<id>`
+
+4. **验证进入**：执行 `git branch --show-current`，输出应为 `change/<id>`；执行 `pwd`，应显示 worktree 路径。验证失败 → 停止，输出「❌ worktree 创建后验证失败」
+
+5. **创建目录结构**：在 worktree 中创建 `.specs/<id>/` 目录
+
+6. **创建 STATE.md**：写入初始状态（`当前阶段: 0-需求`、`路径模式: 待定`、`worktree_path: <pwd 输出的 worktree 绝对路径>`）
+
+7. **记录 change-id 到会话上下文**：供后续阶段使用
+
+**验证**：步骤完成后执行 `git branch --show-current` 和 `pwd`，确认在 `change/<id>` 分支和 worktree 目录。未确认不得继续加载 0-需求阶段
 
 
 
@@ -814,7 +840,7 @@ Handoff 检查在**首次阶段转换**时执行，验证上游上下文是否�
 
 | worktree 相关 | grep 加载 `references/worktree-lifecycle.md` 对应流程 | — |
 
-| common/ 引用 | special-flows.md 步骤内显式写明加载路径 | 按参数替换后执行 |
+| common/ 引用 | stages 步骤或 special-flows.md 步骤内显式写明加载路径 | 按参数替换后执行 |
 
 
 
@@ -1034,7 +1060,7 @@ flow-go 支持 4 级输出压缩模式，按阶段自动切换：
 
 - [ ] 闸门检查已实际执行（已调用 gate_check.py 或已逐条验证工件存在性），如未执行禁止继续
 
-- [ ] worktree 已创建并已进入（非 0-需求步骤 3.5 之前时，`git branch --show-current` 确认在 `change/<id>` 分支）
+- [ ] worktree 已创建并已进入（0-需求阶段开始前已在 worktree 中，`git branch --show-current` 确认在 `change/<id>` 分支）
 
 - [ ] 角色声明包含红线提醒
 
@@ -1042,5 +1068,5 @@ flow-go 支持 4 级输出压缩模式，按阶段自动切换：
 
 
 
-<!-- flowgo-per-turn: STAGE ACTIVE. 锚点口诀. 输出模式按阶段映射. 文件写入前验证 CWD 在 worktree（git branch --show-current = change/<id>；0-需求步骤 3.5 前除外）。所有变更文件必须在 worktree 内完成，主仓库仅允许写全局文件（CONTEXT.md / LESSONS.md / PIPELINE.md / adr/ / scars/ / evolution/ / skill-errors.jsonl / traces.jsonl / health-history.jsonl）且使用主仓库绝对路径。 -->
+<!-- flowgo-per-turn: STAGE ACTIVE. 锚点口诀. 输出模式按阶段映射. 文件写入前验证 CWD 在 worktree（git branch --show-current = change/<id>；0-需求阶段开始时已在 worktree 中）。所有变更文件必须在 worktree 内完成，主仓库仅允许写全局文件（CONTEXT.md / LESSONS.md / PIPELINE.md / adr/ / scars/ / evolution/ / skill-errors.jsonl / traces.jsonl / health-history.jsonl）且使用主仓库绝对路径。 -->
 

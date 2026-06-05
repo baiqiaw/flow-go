@@ -326,7 +326,7 @@ none → active → cleaned
 
 
 
-**触发时机**：0-需求阶段步骤 3.5（change-id 生成后立即创建）。
+**触发时机**：SKILL.md 路由层（路由到 0-需求时立即创建，确保阶段加载前已在 worktree 中）。
 
 
 
@@ -526,7 +526,7 @@ git worktree add .claude/worktrees/<id> -b change/<id>
 
 
 
-**适用阶段**：0-需求（步骤 3.5 之后）、1-设计、2-任务、3-开发、4-测试、5-审查、6-部署。
+**适用阶段**：0-需求（路由层已创建 worktree）、1-设计、2-任务、3-开发、4-测试、5-审查、6-部署。
 
 
 
@@ -646,7 +646,7 @@ git worktree add .claude/worktrees/<id> -b change/<id>
 
 
 
-**适用范围**：worktree 处于 active 状态的所有阶段（0-需求步骤 3.5 之后至归档前）。
+**适用范围**：worktree 处于 active 状态的所有阶段（0-需求路由层创建后至归档前）。
 
 
 
@@ -1480,7 +1480,7 @@ git commit 前，执行 `git diff --name-only` + `git status --porcelain`，逐�
 
 
 
-5. `worktree_path` 为 `无` → 留在主仓库（0-需求步骤 3.5 之前尚未创建 worktree 的状态）
+5. `worktree_path` 为 `无` → 留在主仓库（0-需求路由层尚未创建 worktree 的状态，仅限路由到新 change 时）
 
 
 
